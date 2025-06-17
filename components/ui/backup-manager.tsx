@@ -22,7 +22,7 @@ import { Badge } from './badge';
 import { Progress } from './progress';
 import { toast } from 'sonner';
 import { getAttendanceRecords } from '@/lib/attendance';
-import { BackupManager, BackupHistoryEntry } from '@/lib/backup';
+import { BackupManager as BackupLib, BackupHistoryEntry } from '@/lib/backup';
 import { StorageManager } from '@/lib/storage';
 
 interface BackupStatus {
@@ -65,7 +65,7 @@ export function BackupManager() {
   }, []);
 
   const loadBackupHistory = useCallback(() => {
-    const history = BackupManager.getBackupHistory();
+    const history = BackupLib.getBackupHistory();
     setBackupHistory(history);
     
     if (history.length > 0) {
@@ -88,7 +88,7 @@ export function BackupManager() {
   const exportBackup = async () => {
     setIsExporting(true);
     try {
-      BackupManager.downloadBackup();
+      BackupLib.downloadBackup();
       
       toast.success('Backup exported successfully', {
         description: 'Your data has been exported securely as a JSON file.',
@@ -114,7 +114,7 @@ export function BackupManager() {
     setIsImporting(true);
     try {
       const backupString = await file.text();
-      const result = BackupManager.importBackup(backupString);
+      const result = BackupLib.importBackup(backupString);
       
       if (result.success) {
         toast.success('Backup imported successfully', {
@@ -146,7 +146,7 @@ export function BackupManager() {
   };
 
   const clearBackupHistory = () => {
-    BackupManager.clearBackupHistory();
+    BackupLib.clearBackupHistory();
     setBackupHistory([]);
     toast.success('Backup history cleared', {
       description: 'All backup history entries have been removed.',
