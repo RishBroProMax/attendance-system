@@ -153,7 +153,7 @@ export default function AdminPanel() {
         setShowPinDialog(false);
         toast.success('Access Granted', {
           description: 'Welcome to the admin panel',
-          icon: <ShieldAlert className="h-5 w-5 text-red-500" />,
+          icon: (<ShieldAlert className="h-5 w-5 text-red-500" />),
         });
       }
     } catch (error) {
@@ -187,7 +187,7 @@ export default function AdminPanel() {
     if (lastExport !== date) {
       toast('Daily Export Reminder', {
         description: 'Please remember to export today\'s attendance records before end of day.',
-        icon: <AlertTriangle className="h-5 w-5 text-yellow-500" />,
+        icon: (<AlertTriangle className="h-5 w-5 text-yellow-500" />),
         duration: 5000,
       });
     }
