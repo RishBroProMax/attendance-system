@@ -81,7 +81,7 @@ export class BackupManager {
         size: new Blob([backupString]).size
       };
 
-      const history = StorageManager.getItem('BACKUP_HISTORY', []);
+      const history = StorageManager.getItem<BackupHistoryEntry[]>('BACKUP_HISTORY', []);
       history.unshift(historyEntry);
       
       // Keep only last 10 backups in history
@@ -200,7 +200,7 @@ export class BackupManager {
   }
 
   static getBackupHistory(): BackupHistoryEntry[] {
-    return StorageManager.getItem('BACKUP_HISTORY', []);
+    return StorageManager.getItem<BackupHistoryEntry[]>('BACKUP_HISTORY', []);
   }
 
   static clearBackupHistory(): boolean {
