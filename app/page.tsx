@@ -50,6 +50,7 @@ export default function Home() {
   const [role, setRole] = useState<PrefectRole | ''>('');
   const [prefectNumber, setPrefectNumber] = useState('');
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -77,10 +78,10 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!role || !prefectNumber) {
+    if (!role || !prefectNumber.trim()) {
       toast.error('Please fill in all fields', {
         icon: <AlertTriangle className="w-6 h-6 text-red-500" />,
         description: 'Both role and prefect number are required.',
@@ -89,30 +90,35 @@ export default function Home() {
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
       const today = new Date().toLocaleDateString();
-      if (checkDuplicateAttendance(prefectNumber, role, today)) {
+      const trimmedNumber = prefectNumber.trim();
+      
+      if (checkDuplicateAttendance(trimmedNumber, role, today)) {
         toast.error('Duplicate Entry', {
           icon: <AlertTriangle className="w-6 h-6 text-red-500" />,
-          description: `A prefect with number ${prefectNumber} has already registered for role ${role} today.`,
+          description: `A prefect with number ${trimmedNumber} has already registered for role ${role} today.`,
           duration: 5000,
         });
         return;
       }
 
-      const record = saveAttendance(prefectNumber, role);
+      const record = saveAttendance(trimmedNumber, role);
       const time = new Date(record.timestamp);
       const isLate = time.getHours() > 7 || (time.getHours() === 7 && time.getMinutes() > 0);
 
       // Special notifications
-      if (role === 'Head' && (prefectNumber === '01' || prefectNumber === '02')) {
-        toast.info('Head Prefect Are marked Thier Attendance', {
+      if (role === 'Head' && (trimmedNumber === '01' || trimmedNumber === '02')) {
+        toast.info('Head Prefect Attendance Marked', {
           position: 'top-center',
           icon: <User className="w-6 h-6 text-blue-500" />,
+          description: 'Head Prefect attendance has been successfully recorded.',
           duration: 5000,
         });
-      } else if (role === 'Sub' && prefectNumber === '64') {
-        toast.info('Sub 64 Attendance Marked', {
+      } else if (role === 'Sub' && trimmedNumber === '64') {
+        toast.info('Developer Attendance Marked', {
           position: 'top-center',
           icon: <Code className="w-6 h-6 text-purple-500" />,
           description:
@@ -122,7 +128,7 @@ export default function Home() {
       } else {
         toast.success('Attendance Marked Successfully', {
           icon: <CheckCircle className="w-6 h-6 text-green-500" />,
-          description: `${role} ${prefectNumber} marked at ${time.toLocaleTimeString()}`,
+          description: `${role} ${trimmedNumber} marked at ${time.toLocaleTimeString()}`,
           duration: 4000,
         });
       }
@@ -136,6 +142,7 @@ export default function Home() {
         });
       }
 
+      // Clear form after successful submission
       setRole('');
       setPrefectNumber('');
     } catch (error) {
@@ -145,6 +152,8 @@ export default function Home() {
           error instanceof Error ? error.message : 'Failed to mark attendance',
         duration: 4000,
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -200,7 +209,7 @@ export default function Home() {
                 <User className="w-5 h-5 text-primary" />
                 <span className="font-medium">Select Your Role</span>
               </div>
-              <Select value={role} onValueChange={(value) => setRole(value as PrefectRole)}>
+              <Select value={role} onValueChange={(value) => setRole(value as PrefectRole)} disabled={isSubmitting}>
                 <SelectTrigger className="w-full bg-background/50 border-white/20 backdrop-blur-sm">
                   <SelectValue placeholder="Choose your role" />
                 </SelectTrigger>
@@ -210,7 +219,7 @@ export default function Home() {
                       <div className="flex items-center justify-between w-full">
                         <span>{roleName}</span>
                         <kbd className="ml-2 px-2 py-0.5 bg-secondary rounded text-xs">
-                          {index + 1}
+                          {index === 9 ? '0' : (index + 1).toString()}
                         </kbd>
                       </div>
                     </SelectItem>
@@ -230,15 +239,26 @@ export default function Home() {
                 value={prefectNumber}
                 onChange={(e) => setPrefectNumber(e.target.value)}
                 className="w-full bg-background/50 border-white/20 backdrop-blur-sm"
+                disabled={isSubmitting}
               />
             </div>
 
             <Button
               type="submit"
               className="w-full text-base font-medium bg-primary/90 hover:bg-primary backdrop-blur-sm flex items-center justify-center gap-2"
+              disabled={isSubmitting}
             >
-              <CheckCircle className="w-5 h-5" />
-              Mark Attendance
+              {isSubmitting ? (
+                <>
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  Marking Attendance...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-5 h-5" />
+                  Mark Attendance
+                </>
+              )}
             </Button>
           </form>
         </CardContent>

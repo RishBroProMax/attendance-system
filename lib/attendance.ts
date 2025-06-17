@@ -1,14 +1,12 @@
 'use client';
 
 import { AttendanceRecord, DailyStats, PrefectRole } from './types';
+import { StorageManager } from './storage';
 
-const STORAGE_KEY = 'prefect_attendance_records';
-const MAX_DAYS = 365; // Maximum days to keep records, set to a very high number
-const FAILED_ATTEMPTS_KEY = 'admin_failed_attempts';
-const LOCKOUT_TIME_KEY = 'admin_lockout_time';
+const MAX_DAYS = 365; // Maximum days to keep records
 const MAX_FAILED_ATTEMPTS = 10;
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
-const ADMIN_PIN = 'apple'; // In a production environment, this should be properly secured
+const ADMIN_PIN = 'apple'; // In production, this should be properly secured
 
 export function checkDuplicateAttendance(prefectNumber: string, role: PrefectRole, date: string): boolean {
   const records = getAttendanceRecords();
@@ -21,7 +19,7 @@ export function checkDuplicateAttendance(prefectNumber: string, role: PrefectRol
 
 export function checkAdminAccess(pin: string): boolean {
   const now = Date.now();
-  const storedLockoutTime = Number(localStorage.getItem(LOCKOUT_TIME_KEY) || '0');
+  const storedLockoutTime = Number(StorageManager.getItem('ADMIN_LOCKOUT_TIME', '0'));
   
   if (now < storedLockoutTime) {
     const remainingMinutes = Math.ceil((storedLockoutTime - now) / 60000);
@@ -29,17 +27,17 @@ export function checkAdminAccess(pin: string): boolean {
   }
 
   if (pin === ADMIN_PIN) {
-    localStorage.removeItem(FAILED_ATTEMPTS_KEY);
-    localStorage.removeItem(LOCKOUT_TIME_KEY);
+    StorageManager.removeItem('ADMIN_FAILED_ATTEMPTS');
+    StorageManager.removeItem('ADMIN_LOCKOUT_TIME');
     return true;
   }
 
-  const failedAttempts = Number(localStorage.getItem(FAILED_ATTEMPTS_KEY) || '0') + 1;
-  localStorage.setItem(FAILED_ATTEMPTS_KEY, failedAttempts.toString());
+  const failedAttempts = Number(StorageManager.getItem('ADMIN_FAILED_ATTEMPTS', '0')) + 1;
+  StorageManager.setItem('ADMIN_FAILED_ATTEMPTS', failedAttempts.toString());
 
   if (failedAttempts >= MAX_FAILED_ATTEMPTS) {
     const newLockoutTime = now + LOCKOUT_DURATION;
-    localStorage.setItem(LOCKOUT_TIME_KEY, newLockoutTime.toString());
+    StorageManager.setItem('ADMIN_LOCKOUT_TIME', newLockoutTime.toString());
     throw new Error(`Too many failed attempts. Account locked for ${LOCKOUT_DURATION / 60000} minutes.`);
   }
 
@@ -57,7 +55,7 @@ export function saveManualAttendance(
   role: PrefectRole,
   timestamp: Date
 ): AttendanceRecord {
-  const date = timestamp.toISOString().split('T')[0];
+  const date = timestamp.toLocaleDateString();
   
   if (checkDuplicateAttendance(prefectNumber, role, date)) {
     throw new Error(`A prefect with number ${prefectNumber} has already registered for role ${role} today.`);
@@ -67,14 +65,18 @@ export function saveManualAttendance(
   
   const record: AttendanceRecord = {
     id: crypto.randomUUID(),
-    prefectNumber,
+    prefectNumber: prefectNumber.trim(),
     role,
     timestamp: timestamp.toISOString(),
     date,
   };
 
   records.push(record);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  
+  const success = StorageManager.setItem('ATTENDANCE_RECORDS', records);
+  if (!success) {
+    throw new Error('Failed to save attendance record to storage');
+  }
   
   cleanOldRecords();
   return record;
@@ -89,27 +91,105 @@ export function saveBulkAttendance(
   const success: AttendanceRecord[] = [];
   const errors: Array<{ prefectNumber: string; role: PrefectRole; error: string }> = [];
 
+  // Validate input data
+  if (!Array.isArray(attendanceData) || attendanceData.length === 0) {
+    throw new Error('Invalid attendance data: must be a non-empty array');
+  }
+
+  // Get current records once
+  const currentRecords = getAttendanceRecords();
+  const newRecords: AttendanceRecord[] = [];
+
   attendanceData.forEach(({ prefectNumber, role }) => {
     try {
-      if (checkDuplicateAttendance(prefectNumber, role, date)) {
+      // Validate individual entry
+      if (!prefectNumber || !prefectNumber.trim()) {
         errors.push({
-          prefectNumber,
+          prefectNumber: prefectNumber || '',
+          role,
+          error: 'Prefect number is required'
+        });
+        return;
+      }
+
+      if (!role) {
+        errors.push({
+          prefectNumber: prefectNumber.trim(),
+          role: role || 'Unknown' as PrefectRole,
+          error: 'Role is required'
+        });
+        return;
+      }
+
+      const trimmedNumber = prefectNumber.trim();
+
+      // Check for duplicates in current records
+      const existsInCurrent = currentRecords.some(record => 
+        record.prefectNumber === trimmedNumber && 
+        record.role === role && 
+        record.date === date
+      );
+
+      if (existsInCurrent) {
+        errors.push({
+          prefectNumber: trimmedNumber,
           role,
           error: `Already registered for ${role} today`
         });
         return;
       }
 
-      const record = saveManualAttendance(prefectNumber, role, now);
+      // Check for duplicates in this batch
+      const existsInBatch = newRecords.some(record => 
+        record.prefectNumber === trimmedNumber && 
+        record.role === role
+      );
+
+      if (existsInBatch) {
+        errors.push({
+          prefectNumber: trimmedNumber,
+          role,
+          error: `Duplicate entry in this batch`
+        });
+        return;
+      }
+
+      const record: AttendanceRecord = {
+        id: crypto.randomUUID(),
+        prefectNumber: trimmedNumber,
+        role,
+        timestamp: now.toISOString(),
+        date,
+      };
+
+      newRecords.push(record);
       success.push(record);
     } catch (error) {
       errors.push({
-        prefectNumber,
-        role,
+        prefectNumber: prefectNumber?.trim() || '',
+        role: role || 'Unknown' as PrefectRole,
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
+
+  // Save all successful records at once
+  if (newRecords.length > 0) {
+    const allRecords = [...currentRecords, ...newRecords];
+    const saveSuccess = StorageManager.setItem('ATTENDANCE_RECORDS', allRecords);
+    
+    if (!saveSuccess) {
+      // If save fails, mark all as errors
+      newRecords.forEach(record => {
+        errors.push({
+          prefectNumber: record.prefectNumber,
+          role: record.role,
+          error: 'Failed to save to storage'
+        });
+      });
+      success.length = 0; // Clear success array
+    }
+  }
 
   return { success, errors };
 }
@@ -128,7 +208,7 @@ export function updateAttendance(
   // Check for duplicates when updating prefect number or role
   if (updates.prefectNumber || updates.role) {
     const date = updates.date || records[index].date;
-    const prefectNumber = updates.prefectNumber || records[index].prefectNumber;
+    const prefectNumber = (updates.prefectNumber || records[index].prefectNumber).trim();
     const role = updates.role || records[index].role;
     
     const hasDuplicate = records.some((record, i) => 
@@ -146,10 +226,15 @@ export function updateAttendance(
   const updatedRecord = {
     ...records[index],
     ...updates,
+    prefectNumber: updates.prefectNumber ? updates.prefectNumber.trim() : records[index].prefectNumber
   };
 
   records[index] = updatedRecord;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  
+  const success = StorageManager.setItem('ATTENDANCE_RECORDS', records);
+  if (!success) {
+    throw new Error('Failed to update record in storage');
+  }
   
   return updatedRecord;
 }
@@ -157,12 +242,15 @@ export function updateAttendance(
 export function deleteAttendance(id: string): void {
   const records = getAttendanceRecords();
   const filteredRecords = records.filter(r => r.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredRecords));
+  
+  const success = StorageManager.setItem('ATTENDANCE_RECORDS', filteredRecords);
+  if (!success) {
+    throw new Error('Failed to delete record from storage');
+  }
 }
 
 export function getAttendanceRecords(): AttendanceRecord[] {
-  const records = localStorage.getItem(STORAGE_KEY);
-  return records ? JSON.parse(records) : [];
+  return StorageManager.getItem('ATTENDANCE_RECORDS', []);
 }
 
 export function searchPrefectRecords(prefectNumber: string): AttendanceRecord[] {
@@ -306,7 +394,9 @@ export function cleanOldRecords() {
     new Date(record.timestamp) > cutoff
   );
   
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredRecords));
+  if (filteredRecords.length !== records.length) {
+    StorageManager.setItem('ATTENDANCE_RECORDS', filteredRecords);
+  }
 }
 
 export function exportAttendance(date: string): string {
