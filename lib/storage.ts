@@ -20,16 +20,23 @@ const INTEGRITY_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
 // Storage event listeners for real-time sync
 const storageListeners = new Set<(records: AttendanceRecord[]) => void>();
 
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined' && typeof localStorage !== 'undefined';
+
 // Storage manager class
 export class AttendanceStorageManager {
   private static instance: AttendanceStorageManager;
   private integrityCheckInterval: NodeJS.Timeout | null = null;
   private backupInterval: NodeJS.Timeout | null = null;
+  private initialized = false;
 
   private constructor() {
-    this.initializeStorage();
-    this.setupStorageListeners();
-    this.startPeriodicTasks();
+    if (isBrowser) {
+      this.initializeStorage();
+      this.setupStorageListeners();
+      this.startPeriodicTasks();
+      this.initialized = true;
+    }
   }
 
   public static getInstance(): AttendanceStorageManager {
@@ -39,7 +46,17 @@ export class AttendanceStorageManager {
     return AttendanceStorageManager.instance;
   }
 
+  private ensureBrowser(): boolean {
+    if (!isBrowser) {
+      console.warn('Storage operations are only available in browser environment');
+      return false;
+    }
+    return true;
+  }
+
   private initializeStorage(): void {
+    if (!this.ensureBrowser()) return;
+
     try {
       // Check and migrate storage version if needed
       const currentVersion = localStorage.getItem(STORAGE_KEYS.STORAGE_VERSION);
@@ -62,6 +79,8 @@ export class AttendanceStorageManager {
   }
 
   private setupStorageListeners(): void {
+    if (!this.ensureBrowser()) return;
+
     // Listen for storage events from other tabs/windows
     window.addEventListener('storage', (event) => {
       if (event.key === STORAGE_KEYS.ATTENDANCE_RECORDS && event.newValue) {
@@ -81,6 +100,8 @@ export class AttendanceStorageManager {
   }
 
   private startPeriodicTasks(): void {
+    if (!this.ensureBrowser()) return;
+
     // Periodic integrity checks
     this.integrityCheckInterval = setInterval(() => {
       this.verifyDataIntegrity();
@@ -96,6 +117,8 @@ export class AttendanceStorageManager {
   }
 
   private migrateStorage(oldVersion: string | null): void {
+    if (!this.ensureBrowser()) return;
+
     try {
       console.log(`Migrating storage from ${oldVersion || 'unknown'} to ${STORAGE_VERSION}`);
       
@@ -130,6 +153,8 @@ export class AttendanceStorageManager {
   }
 
   private verifyDataIntegrity(): boolean {
+    if (!this.ensureBrowser()) return false;
+
     try {
       const records = this.getRecords();
       const currentHash = this.generateDataHash(records);
@@ -149,6 +174,8 @@ export class AttendanceStorageManager {
   }
 
   private attemptDataRecovery(): boolean {
+    if (!this.ensureBrowser()) return false;
+
     try {
       // Try to recover from backup
       const backupData = this.getLatestBackup();
@@ -177,6 +204,10 @@ export class AttendanceStorageManager {
   }
 
   private checkStorageQuota(): { available: number; used: number; percentage: number } {
+    if (!this.ensureBrowser()) {
+      return { available: 0, used: 0, percentage: 0 };
+    }
+
     try {
       const testKey = 'storage_quota_test';
       const testData = 'x'.repeat(1024); // 1KB test
@@ -216,6 +247,8 @@ export class AttendanceStorageManager {
   }
 
   private handleStorageError(error: any): void {
+    if (!this.ensureBrowser()) return;
+
     if (error.name === 'QuotaExceededError' || error.code === 22) {
       console.error('Storage quota exceeded');
       this.handleQuotaExceeded();
@@ -227,6 +260,8 @@ export class AttendanceStorageManager {
   }
 
   private handleQuotaExceeded(): void {
+    if (!this.ensureBrowser()) return;
+
     try {
       // Remove old backup data first
       this.cleanOldBackups();
@@ -251,6 +286,8 @@ export class AttendanceStorageManager {
   }
 
   private cleanOldBackups(): void {
+    if (!this.ensureBrowser()) return;
+
     try {
       const backupKeys = Object.keys(localStorage).filter(key => 
         key.startsWith('attendance_backup_')
@@ -274,6 +311,8 @@ export class AttendanceStorageManager {
   }
 
   public getRecords(): AttendanceRecord[] {
+    if (!this.ensureBrowser()) return [];
+
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ATTENDANCE_RECORDS);
       if (!data) return [];
@@ -302,6 +341,8 @@ export class AttendanceStorageManager {
   }
 
   public saveRecords(records: AttendanceRecord[]): void {
+    if (!this.ensureBrowser()) return;
+
     try {
       // Validate input
       if (!Array.isArray(records)) {
@@ -341,12 +382,18 @@ export class AttendanceStorageManager {
   }
 
   public addRecord(record: AttendanceRecord): void {
+    if (!this.ensureBrowser()) return;
+
     const records = this.getRecords();
     records.push(record);
     this.saveRecords(records);
   }
 
   public updateRecord(id: string, updates: Partial<AttendanceRecord>): AttendanceRecord {
+    if (!this.ensureBrowser()) {
+      throw new Error('Storage operations are only available in browser environment');
+    }
+
     const records = this.getRecords();
     const index = records.findIndex(r => r.id === id);
     
@@ -362,12 +409,16 @@ export class AttendanceStorageManager {
   }
 
   public deleteRecord(id: string): void {
+    if (!this.ensureBrowser()) return;
+
     const records = this.getRecords();
     const filteredRecords = records.filter(r => r.id !== id);
     this.saveRecords(filteredRecords);
   }
 
   private updateBackupMetadata(): void {
+    if (!this.ensureBrowser()) return;
+
     try {
       const metadata = {
         lastUpdate: Date.now(),
@@ -381,6 +432,8 @@ export class AttendanceStorageManager {
   }
 
   private checkAndPerformBackup(): void {
+    if (!this.ensureBrowser()) return;
+
     try {
       const lastBackup = localStorage.getItem(STORAGE_KEYS.LAST_BACKUP);
       const lastBackupTime = lastBackup ? parseInt(lastBackup) : 0;
@@ -395,6 +448,8 @@ export class AttendanceStorageManager {
   }
 
   private performAutomaticBackup(): void {
+    if (!this.ensureBrowser()) return;
+
     try {
       const records = this.getRecords();
       const timestamp = Date.now();
@@ -423,6 +478,8 @@ export class AttendanceStorageManager {
   }
 
   private performEmergencyBackup(): void {
+    if (!this.ensureBrowser()) return;
+
     try {
       const records = this.getRecords();
       const emergencyBackup = {
@@ -438,6 +495,10 @@ export class AttendanceStorageManager {
   }
 
   public createManualBackup(): string {
+    if (!this.ensureBrowser()) {
+      throw new Error('Storage operations are only available in browser environment');
+    }
+
     try {
       const records = this.getRecords();
       const timestamp = Date.now();
@@ -467,6 +528,10 @@ export class AttendanceStorageManager {
   }
 
   public restoreFromBackup(backupString: string): void {
+    if (!this.ensureBrowser()) {
+      throw new Error('Storage operations are only available in browser environment');
+    }
+
     try {
       const backupData = JSON.parse(backupString);
       
@@ -493,6 +558,8 @@ export class AttendanceStorageManager {
   }
 
   private getLatestBackup(): { timestamp: number; records: AttendanceRecord[] } | null {
+    if (!this.ensureBrowser()) return null;
+
     try {
       const backupKeys = Object.keys(localStorage).filter(key => 
         key.startsWith('attendance_backup_')
@@ -528,7 +595,7 @@ export class AttendanceStorageManager {
   } {
     const quota = this.checkStorageQuota();
     const records = this.getRecords();
-    const lastBackup = localStorage.getItem(STORAGE_KEYS.LAST_BACKUP);
+    const lastBackup = isBrowser ? localStorage.getItem(STORAGE_KEYS.LAST_BACKUP) : null;
     const integrity = this.verifyDataIntegrity();
 
     return {
@@ -566,8 +633,92 @@ export class AttendanceStorageManager {
   }
 }
 
-// Export singleton instance
-export const storageManager = AttendanceStorageManager.getInstance();
+// Create a proxy storage manager that handles SSR gracefully
+class StorageManagerProxy {
+  private _instance: AttendanceStorageManager | null = null;
+
+  private getInstance(): AttendanceStorageManager {
+    if (!this._instance) {
+      this._instance = AttendanceStorageManager.getInstance();
+    }
+    return this._instance;
+  }
+
+  getRecords(): AttendanceRecord[] {
+    if (!isBrowser) return [];
+    return this.getInstance().getRecords();
+  }
+
+  saveRecords(records: AttendanceRecord[]): void {
+    if (!isBrowser) return;
+    this.getInstance().saveRecords(records);
+  }
+
+  addRecord(record: AttendanceRecord): void {
+    if (!isBrowser) return;
+    this.getInstance().addRecord(record);
+  }
+
+  updateRecord(id: string, updates: Partial<AttendanceRecord>): AttendanceRecord {
+    if (!isBrowser) {
+      throw new Error('Storage operations are only available in browser environment');
+    }
+    return this.getInstance().updateRecord(id, updates);
+  }
+
+  deleteRecord(id: string): void {
+    if (!isBrowser) return;
+    this.getInstance().deleteRecord(id);
+  }
+
+  createManualBackup(): string {
+    if (!isBrowser) {
+      throw new Error('Storage operations are only available in browser environment');
+    }
+    return this.getInstance().createManualBackup();
+  }
+
+  restoreFromBackup(backupString: string): void {
+    if (!isBrowser) {
+      throw new Error('Storage operations are only available in browser environment');
+    }
+    this.getInstance().restoreFromBackup(backupString);
+  }
+
+  getStorageInfo(): {
+    quota: { available: number; used: number; percentage: number };
+    recordCount: number;
+    lastBackup: string | null;
+    version: string;
+    integrity: boolean;
+  } {
+    if (!isBrowser) {
+      return {
+        quota: { available: 0, used: 0, percentage: 0 },
+        recordCount: 0,
+        lastBackup: null,
+        version: STORAGE_VERSION,
+        integrity: false,
+      };
+    }
+    return this.getInstance().getStorageInfo();
+  }
+
+  addStorageListener(callback: (records: AttendanceRecord[]) => void): () => void {
+    if (!isBrowser) {
+      return () => {}; // Return no-op function
+    }
+    return this.getInstance().addStorageListener(callback);
+  }
+
+  cleanup(): void {
+    if (!isBrowser) return;
+    this.getInstance().cleanup();
+  }
+}
+
+// Export proxy instance instead of direct instance
+export const storageManager = new StorageManagerProxy();
 
 // Utility functions for backward compatibility
 export function getAttendanceRecords(): AttendanceRecord[] {
