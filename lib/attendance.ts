@@ -1,8 +1,8 @@
 'use client';
 
 import { AttendanceRecord, DailyStats, PrefectRole } from './types';
+import { storageManager } from './storage';
 
-const STORAGE_KEY = 'prefect_attendance_records';
 const MAX_DAYS = 999999999; // Maximum days to keep records, set to a very high number
 const FAILED_ATTEMPTS_KEY = 'admin_failed_attempts';
 const LOCKOUT_TIME_KEY = 'admin_lockout_time';
@@ -11,7 +11,7 @@ const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
 const ADMIN_PIN = 'apple'; // In a production environment, this should be properly secured
 
 export function checkDuplicateAttendance(prefectNumber: string, role: PrefectRole, date: string): boolean {
-  const records = getAttendanceRecords();
+  const records = storageManager.getRecords();
   return records.some(record => 
     record.prefectNumber === prefectNumber && 
     record.role === role && 
@@ -63,8 +63,6 @@ export function saveManualAttendance(
     throw new Error(`A prefect with number ${prefectNumber} has already registered for role ${role} today.`);
   }
 
-  const records = getAttendanceRecords();
-  
   const record: AttendanceRecord = {
     id: crypto.randomUUID(),
     prefectNumber,
@@ -73,11 +71,14 @@ export function saveManualAttendance(
     date,
   };
 
-  records.push(record);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-  
-  cleanOldRecords();
-  return record;
+  try {
+    storageManager.addRecord(record);
+    cleanOldRecords();
+    return record;
+  } catch (error) {
+    console.error('Failed to save attendance:', error);
+    throw new Error('Failed to save attendance record. Please try again.');
+  }
 }
 
 export function saveBulkAttendance(
@@ -118,21 +119,21 @@ export function updateAttendance(
   id: string,
   updates: Partial<AttendanceRecord>
 ): AttendanceRecord {
-  const records = getAttendanceRecords();
-  const index = records.findIndex(r => r.id === id);
+  const records = storageManager.getRecords();
+  const existingRecord = records.find(r => r.id === id);
   
-  if (index === -1) {
+  if (!existingRecord) {
     throw new Error('Record not found');
   }
 
   // Check for duplicates when updating prefect number or role
   if (updates.prefectNumber || updates.role) {
-    const date = updates.date || records[index].date;
-    const prefectNumber = updates.prefectNumber || records[index].prefectNumber;
-    const role = updates.role || records[index].role;
+    const date = updates.date || existingRecord.date;
+    const prefectNumber = updates.prefectNumber || existingRecord.prefectNumber;
+    const role = updates.role || existingRecord.role;
     
-    const hasDuplicate = records.some((record, i) => 
-      i !== index && 
+    const hasDuplicate = records.some(record => 
+      record.id !== id && 
       record.prefectNumber === prefectNumber && 
       record.role === role && 
       record.date === date
@@ -143,30 +144,29 @@ export function updateAttendance(
     }
   }
 
-  const updatedRecord = {
-    ...records[index],
-    ...updates,
-  };
-
-  records[index] = updatedRecord;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-  
-  return updatedRecord;
+  try {
+    return storageManager.updateRecord(id, updates);
+  } catch (error) {
+    console.error('Failed to update attendance:', error);
+    throw new Error('Failed to update attendance record. Please try again.');
+  }
 }
 
 export function deleteAttendance(id: string): void {
-  const records = getAttendanceRecords();
-  const filteredRecords = records.filter(r => r.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredRecords));
+  try {
+    storageManager.deleteRecord(id);
+  } catch (error) {
+    console.error('Failed to delete attendance:', error);
+    throw new Error('Failed to delete attendance record. Please try again.');
+  }
 }
 
 export function getAttendanceRecords(): AttendanceRecord[] {
-  const records = localStorage.getItem(STORAGE_KEY);
-  return records ? JSON.parse(records) : [];
+  return storageManager.getRecords();
 }
 
 export function searchPrefectRecords(prefectNumber: string): AttendanceRecord[] {
-  const records = getAttendanceRecords();
+  const records = storageManager.getRecords();
   return records
     .filter(record => record.prefectNumber.toLowerCase().includes(prefectNumber.toLowerCase()))
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -265,7 +265,7 @@ export function exportPrefectReport(prefectNumber: string): string {
 }
 
 export function getDailyStats(date: string): DailyStats {
-  const records = getAttendanceRecords().filter(r => r.date === date);
+  const records = storageManager.getRecords().filter(r => r.date === date);
   const stats: DailyStats = {
     total: records.length,
     onTime: 0,
@@ -298,19 +298,26 @@ export function getDailyStats(date: string): DailyStats {
 }
 
 export function cleanOldRecords() {
-  const records = getAttendanceRecords();
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - MAX_DAYS);
-  
-  const filteredRecords = records.filter(record => 
-    new Date(record.timestamp) > cutoff
-  );
-  
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredRecords));
+  try {
+    const records = storageManager.getRecords();
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - MAX_DAYS);
+    
+    const filteredRecords = records.filter(record => 
+      new Date(record.timestamp) > cutoff
+    );
+    
+    if (filteredRecords.length !== records.length) {
+      storageManager.saveRecords(filteredRecords);
+      console.log(`Cleaned ${records.length - filteredRecords.length} old records`);
+    }
+  } catch (error) {
+    console.error('Failed to clean old records:', error);
+  }
 }
 
 export function exportAttendance(date: string): string {
-  const records = getAttendanceRecords()
+  const records = storageManager.getRecords()
     .filter(r => r.date === date)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
@@ -364,4 +371,21 @@ export function exportAttendance(date: string): string {
   }).join('\n');
 
   return `${header}\n${recordsCSV}`;
+}
+
+// Storage management functions
+export function createBackup(): string {
+  return storageManager.createManualBackup();
+}
+
+export function restoreFromBackup(backupData: string): void {
+  storageManager.restoreFromBackup(backupData);
+}
+
+export function getStorageInfo() {
+  return storageManager.getStorageInfo();
+}
+
+export function addStorageListener(callback: (records: AttendanceRecord[]) => void): () => void {
+  return storageManager.addStorageListener(callback);
 }

@@ -29,8 +29,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { PrefectRole } from '@/lib/types';
-import { saveAttendance, checkDuplicateAttendance } from '@/lib/attendance';
+import { saveAttendance, checkDuplicateAttendance, addStorageListener } from '@/lib/attendance';
 import { roles } from '@/lib/constants';
+import { RealTimeSync } from '@/components/ui/real-time-sync';
 
 // Keyboard shortcuts for roles
 const roleShortcuts: Record<string, PrefectRole> = {
@@ -50,6 +51,7 @@ export default function Home() {
   const [role, setRole] = useState<PrefectRole | ''>('');
   const [prefectNumber, setPrefectNumber] = useState('');
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -77,7 +79,17 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Set up real-time storage listener
+  useEffect(() => {
+    const unsubscribe = addStorageListener((records) => {
+      // This will trigger whenever storage is updated from any source
+      console.log('Storage updated with', records.length, 'records');
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!role || !prefectNumber) {
@@ -88,6 +100,8 @@ export default function Home() {
       });
       return;
     }
+
+    setIsSubmitting(true);
 
     try {
       const today = new Date().toLocaleDateString();
@@ -106,7 +120,7 @@ export default function Home() {
 
       // Special notifications
       if (role === 'Head' && (prefectNumber === '01' || prefectNumber === '02')) {
-        toast.info('Head Prefect Are marked Thier Attendance', {
+        toast.info('Head Prefect Attendance Marked', {
           position: 'top-center',
           icon: <User className="w-6 h-6 text-blue-500" />,
           duration: 5000,
@@ -145,104 +159,122 @@ export default function Home() {
           error instanceof Error ? error.message : 'Failed to mark attendance',
         duration: 4000,
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center py-8 bg-gradient-to-br from-background via-background/95 to-background/90 backdrop-blur-3xl">
-      <Card className="w-full max-w-md mx-auto backdrop-blur-xl bg-background/80 border border-white/10 shadow-2xl">
-        <CardHeader className="text-center space-y-2">
-          <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10 w-16 h-16 flex items-center justify-center backdrop-blur-sm">
-            <Shield className="w-8 h-8 text-primary" />
-          </div>
-          <CardTitle className="text-2xl font-bold">Prefect Attendance</CardTitle>
-          <CardDescription className="text-sm">
-            Mark your daily attendance with ease
-          </CardDescription>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mt-2 backdrop-blur-sm"
-            onClick={() => setShowShortcuts((prev) => !prev)}
-          >
-            <Keyboard className="w-4 h-4 mr-2" />
-            {showShortcuts ? 'Hide Shortcuts' : 'Show Shortcuts'}
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {showShortcuts && (
-            <div className="mb-6 p-4 rounded-lg bg-secondary/30 backdrop-blur-sm border border-white/10">
-              <h3 className="font-medium mb-2 flex items-center gap-2">
-                <Keyboard className="w-4 h-4" />
-                Keyboard Shortcuts
-              </h3>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                {Object.entries(roleShortcuts).map(([key, roleName]) => (
-                  <div key={key} className="flex items-center gap-2">
+    <>
+      <div className="relative min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center py-8 bg-gradient-to-br from-background via-background/95 to-background/90 backdrop-blur-3xl">
+        <Card className="w-full max-w-md mx-auto backdrop-blur-xl bg-background/80 border border-white/10 shadow-2xl">
+          <CardHeader className="text-center space-y-2">
+            <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10 w-16 h-16 flex items-center justify-center backdrop-blur-sm">
+              <Shield className="w-8 h-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Prefect Attendance</CardTitle>
+            <CardDescription className="text-sm">
+              Mark your daily attendance with ease
+            </CardDescription>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2 backdrop-blur-sm"
+              onClick={() => setShowShortcuts((prev) => !prev)}
+            >
+              <Keyboard className="w-4 h-4 mr-2" />
+              {showShortcuts ? 'Hide Shortcuts' : 'Show Shortcuts'}
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {showShortcuts && (
+              <div className="mb-6 p-4 rounded-lg bg-secondary/30 backdrop-blur-sm border border-white/10">
+                <h3 className="font-medium mb-2 flex items-center gap-2">
+                  <Keyboard className="w-4 h-4" />
+                  Keyboard Shortcuts
+                </h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {Object.entries(roleShortcuts).map(([key, roleName]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <kbd className="px-2 py-1 bg-background/50 rounded text-xs border border-white/20">
+                        {key}
+                      </kbd>
+                      <span>{roleName}</span>
+                    </div>
+                  ))}
+                  <div className="col-span-2 mt-2 flex items-center gap-2">
                     <kbd className="px-2 py-1 bg-background/50 rounded text-xs border border-white/20">
-                      {key}
+                      ?
                     </kbd>
-                    <span>{roleName}</span>
+                    <span>Toggle shortcuts</span>
                   </div>
-                ))}
-                <div className="col-span-2 mt-2 flex items-center gap-2">
-                  <kbd className="px-2 py-1 bg-background/50 rounded text-xs border border-white/20">
-                    ?
-                  </kbd>
-                  <span>Toggle shortcuts</span>
                 </div>
               </div>
-            </div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <User className="w-5 h-5 text-primary" />
-                <span className="font-medium">Select Your Role</span>
+            )}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <User className="w-5 h-5 text-primary" />
+                  <span className="font-medium">Select Your Role</span>
+                </div>
+                <Select value={role} onValueChange={(value) => setRole(value as PrefectRole)}>
+                  <SelectTrigger className="w-full bg-background/50 border-white/20 backdrop-blur-sm">
+                    <SelectValue placeholder="Choose your role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map((roleName, index) => (
+                      <SelectItem key={roleName} value={roleName}>
+                        <div className="flex items-center justify-between w-full">
+                          <span>{roleName}</span>
+                          <kbd className="ml-2 px-2 py-0.5 bg-secondary rounded text-xs">
+                            {index + 1}
+                          </kbd>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <Select value={role} onValueChange={(value) => setRole(value as PrefectRole)}>
-                <SelectTrigger className="w-full bg-background/50 border-white/20 backdrop-blur-sm">
-                  <SelectValue placeholder="Choose your role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roles.map((roleName, index) => (
-                    <SelectItem key={roleName} value={roleName}>
-                      <div className="flex items-center justify-between w-full">
-                        <span>{roleName}</span>
-                        <kbd className="ml-2 px-2 py-0.5 bg-secondary rounded text-xs">
-                          {index + 1}
-                        </kbd>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Hash className="w-5 h-5 text-primary" />
-                <span className="font-medium">Prefect Number</span>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Hash className="w-5 h-5 text-primary" />
+                  <span className="font-medium">Prefect Number</span>
+                </div>
+                <Input
+                  type="text"
+                  placeholder="Enter your prefect number"
+                  value={prefectNumber}
+                  onChange={(e) => setPrefectNumber(e.target.value)}
+                  className="w-full bg-background/50 border-white/20 backdrop-blur-sm"
+                  disabled={isSubmitting}
+                />
               </div>
-              <Input
-                type="text"
-                placeholder="Enter your prefect number"
-                value={prefectNumber}
-                onChange={(e) => setPrefectNumber(e.target.value)}
-                className="w-full bg-background/50 border-white/20 backdrop-blur-sm"
-              />
-            </div>
 
-            <Button
-              type="submit"
-              className="w-full text-base font-medium bg-primary/90 hover:bg-primary backdrop-blur-sm flex items-center justify-center gap-2"
-            >
-              <CheckCircle className="w-5 h-5" />
-              Mark Attendance
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+              <Button
+                type="submit"
+                className="w-full text-base font-medium bg-primary/90 hover:bg-primary backdrop-blur-sm flex items-center justify-center gap-2"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Marking Attendance...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-5 h-5" />
+                    Mark Attendance
+                  </>
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Real-time sync indicator */}
+      <RealTimeSync />
+    </>
   );
 }

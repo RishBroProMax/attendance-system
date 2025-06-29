@@ -33,9 +33,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { BackupManager } from '@/components/ui/backup-manager';
+import { StorageMonitor } from '@/components/ui/storage-monitor';
+import { RealTimeSync } from '@/components/ui/real-time-sync';
 import { toast } from 'sonner';
 import { AttendanceRecord, DailyStats, PrefectRole } from '@/lib/types';
-import { getAttendanceRecords, getDailyStats, exportAttendance, updateAttendance, checkAdminAccess } from '@/lib/attendance';
+import { 
+  getAttendanceRecords, 
+  getDailyStats, 
+  exportAttendance, 
+  updateAttendance, 
+  checkAdminAccess,
+  addStorageListener
+} from '@/lib/attendance';
 import Link from 'next/link';
 import {
   AlertDialog,
@@ -169,19 +178,30 @@ export default function AdminPanel() {
     }
   };
 
+  // Real-time data updates
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const records = getAttendanceRecords();
-    setAllRecords(records);
-    const todayRecords = records.filter(r => r.date === date);
-    setFilteredRecords(todayRecords);
-    setStats(getDailyStats(date));
+    const loadData = () => {
+      const records = getAttendanceRecords();
+      setAllRecords(records);
+      const todayRecords = records.filter(r => r.date === date);
+      setFilteredRecords(todayRecords);
+      setStats(getDailyStats(date));
 
-    const dates = [...new Set(records.map(r => r.date))].sort((a, b) => 
-      new Date(b).getTime() - new Date(a).getTime()
-    );
-    setUniqueDates(dates);
+      const dates = [...new Set(records.map(r => r.date))].sort((a, b) => 
+        new Date(b).getTime() - new Date(a).getTime()
+      );
+      setUniqueDates(dates);
+    };
+
+    // Initial load
+    loadData();
+
+    // Set up real-time listener
+    const unsubscribe = addStorageListener(() => {
+      loadData();
+    });
 
     const lastExport = localStorage.getItem('last_export_date');
     if (lastExport !== date) {
@@ -191,6 +211,8 @@ export default function AdminPanel() {
         duration: 5000,
       });
     }
+
+    return unsubscribe;
   }, [date, isAuthenticated]);
 
   useEffect(() => {
@@ -384,7 +406,6 @@ export default function AdminPanel() {
         date: timestamp.toLocaleDateString(),
       });
 
-      setAllRecords(prev => prev.map(r => r.id === id ? updatedRecord : r));
       setEditingRecord(null);
       
       toast.success('Record Updated', {
@@ -398,404 +419,417 @@ export default function AdminPanel() {
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-8rem)] p-4 sm:p-8 bg-gradient-to-br from-background via-background/95 to-background/90 backdrop-blur-3xl">
-      <div className="absolute inset-0 -z-10" />
-      <div className="relative max-w-7xl mx-auto space-y-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <Button variant="ghost" className="gap-2 backdrop-blur-sm bg-background/50 border border-white/10">
-                <ArrowLeft className="h-4 w-4 text-white" /> Back
+    <>
+      <div className="relative min-h-[calc(100vh-8rem)] p-4 sm:p-8 bg-gradient-to-br from-background via-background/95 to-background/90 backdrop-blur-3xl">
+        <div className="absolute inset-0 -z-10" />
+        <div className="relative max-w-7xl mx-auto space-y-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Link href="/">
+                <Button variant="ghost" className="gap-2 backdrop-blur-sm bg-background/50 border border-white/10">
+                  <ArrowLeft className="h-4 w-4 text-white" /> Back
+                </Button>
+              </Link>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleFullScreen}
+                className="hidden sm:flex backdrop-blur-sm bg-background/50 border border-white/10"
+              >
+                {isFullScreen ? (
+                  <Minimize className="h-4 w-4 text-white" />
+                ) : (
+                  <Maximize className="h-4 w-4 text-white" />
+                )}
               </Button>
-            </Link>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={toggleFullScreen}
-              className="hidden sm:flex backdrop-blur-sm bg-background/50 border border-white/10"
-            >
-              {isFullScreen ? (
-                <Minimize className="h-4 w-4 text-white" />
-              ) : (
-                <Maximize className="h-4 w-4 text-white" />
-              )}
-            </Button>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-            <div className="relative flex-1 sm:flex-initial">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white" />
-              <Input
-                type="text"
-                placeholder="Search by prefect number..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-background/50 border-white/20 backdrop-blur-sm"
-              />
             </div>
-            <div className="relative flex-1 sm:flex-initial">
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white" />
-              <Input
-                type="date"
-                value={new Date(date).toISOString().split('T')[0]}
-                onChange={handleDateChange}
-                className="pl-10 bg-background/50 border-white/20 backdrop-blur-sm"
-              />
+            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+              <div className="relative flex-1 sm:flex-initial">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white" />
+                <Input
+                  type="text"
+                  placeholder="Search by prefect number..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-background/50 border-white/20 backdrop-blur-sm"
+                />
+              </div>
+              <div className="relative flex-1 sm:flex-initial">
+                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white" />
+                <Input
+                  type="date"
+                  value={new Date(date).toISOString().split('T')[0]}
+                  onChange={handleDateChange}
+                  className="pl-10 bg-background/50 border-white/20 backdrop-blur-sm"
+                />
+              </div>
+              <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as PrefectRole | 'all')}>
+                <SelectTrigger className="w-[180px] bg-background/50 border-white/20 backdrop-blur-sm">
+                  <SelectValue placeholder="Filter by role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  {roles.map((role) => (
+                    <SelectItem key={role} value={role}>{role}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button onClick={handleExport} className="gap-2 w-full sm:w-auto bg-primary/90 hover:bg-primary backdrop-blur-sm">
+                <Download className="h-4 w-4 text-white" /> Export Records
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => setShowClearDialog(true)}
+                className="gap-2 w-full sm:w-auto backdrop-blur-sm"
+              >
+                <Trash2 className="h-4 w-4 text-white" /> Clear Data
+              </Button>
             </div>
-            <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as PrefectRole | 'all')}>
-              <SelectTrigger className="w-[180px] bg-background/50 border-white/20 backdrop-blur-sm">
-                <SelectValue placeholder="Filter by role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                {roles.map((role) => (
-                  <SelectItem key={role} value={role}>{role}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={handleExport} className="gap-2 w-full sm:w-auto bg-primary/90 hover:bg-primary backdrop-blur-sm">
-              <Download className="h-4 w-4 text-white" /> Export Records
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => setShowClearDialog(true)}
-              className="gap-2 w-full sm:w-auto backdrop-blur-sm"
-            >
-              <Trash2 className="h-4 w-4 text-white" /> Clear Data
-            </Button>
           </div>
-        </div>
 
-        <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="backdrop-blur-sm bg-background/50 border border-white/10">
-            <TabsTrigger value="overview" className="gap-2">
-              <BarChart className="h-4 w-4 text-white" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="search" className="gap-2">
-              <UserSearch className="h-4 w-4 text-white" />
-              Search Prefect
-            </TabsTrigger>
-            <TabsTrigger value="bulk" className="gap-2">
-              <UsersIcon className="h-4 w-4 text-white" />
-              Bulk Entry
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="gap-2">
-              <BarChart className="h-4 w-4 text-white" />
-              Analytics
-            </TabsTrigger>
-            <TabsTrigger value="backup" className="gap-2">
-              <Database className="h-4 w-4 text-white" />
-              Backup & Sync
-            </TabsTrigger>
-            <TabsTrigger value="records" className="gap-2">
-              <FileText className="h-4 w-4 text-white" />
-              Records
-            </TabsTrigger>
-            <TabsTrigger value="history" className="gap-2">
-              <Clock className="h-4 w-4 text-white" />
-              History
-            </TabsTrigger>
-          </TabsList>
+          <Tabs defaultValue="overview" className="space-y-4">
+            <TabsList className="backdrop-blur-sm bg-background/50 border border-white/10">
+              <TabsTrigger value="overview" className="gap-2">
+                <BarChart className="h-4 w-4 text-white" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="search" className="gap-2">
+                <UserSearch className="h-4 w-4 text-white" />
+                Search Prefect
+              </TabsTrigger>
+              <TabsTrigger value="bulk" className="gap-2">
+                <UsersIcon className="h-4 w-4 text-white" />
+                Bulk Entry
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="gap-2">
+                <BarChart className="h-4 w-4 text-white" />
+                Analytics
+              </TabsTrigger>
+              <TabsTrigger value="storage" className="gap-2">
+                <Database className="h-4 w-4 text-white" />
+                Storage
+              </TabsTrigger>
+              <TabsTrigger value="backup" className="gap-2">
+                <Database className="h-4 w-4 text-white" />
+                Backup & Sync
+              </TabsTrigger>
+              <TabsTrigger value="records" className="gap-2">
+                <FileText className="h-4 w-4 text-white" />
+                Records
+              </TabsTrigger>
+              <TabsTrigger value="history" className="gap-2">
+                <Clock className="h-4 w-4 text-white" />
+                History
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="overview">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <TabsContent value="overview">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <Card className="backdrop-blur-sm bg-background/80 border border-white/10">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-white" />
+                      Today's Overview
+                    </CardTitle>
+                    <CardDescription>{date}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg backdrop-blur-sm">
+                        <span>Total Prefects</span>
+                        <span className="font-bold text-lg">{stats?.total || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-green-500/10 rounded-lg backdrop-blur-sm border border-green-500/20">
+                        <span>On Time</span>
+                        <span className="font-bold text-lg text-green-500">{stats?.onTime || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-red-500/10 rounded-lg backdrop-blur-sm border border-red-500/20">
+                        <span>Late</span>
+                        <span className="font-bold text-lg text-red-500">{stats?.late || 0}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="backdrop-blur-sm bg-background/80 border border-white/10">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart className="h-5 w-5 text-white" />
+                      Role Distribution
+                    </CardTitle>
+                    <CardDescription>Attendance by role</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {stats && Object.entries(stats.byRole)
+                        .filter(([_, count]) => count > 0)
+                        .map(([role, count]) => (
+                          <div key={role} className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg backdrop-blur-sm">
+                            <span>{role}</span>
+                            <span className="font-bold">{count}</span>
+                          </div>
+                        ))
+                      }
+                      {(!stats || Object.values(stats.byRole).every(count => count === 0)) && (
+                        <p className="text-muted-foreground text-sm text-center py-4">
+                          No role distribution data available
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="backdrop-blur-sm bg-background/80 border border-white/10">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-white" />
+                      Attendance Timeline
+                    </CardTitle>
+                    <CardDescription>Arrival pattern for {date}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {filteredRecords
+                        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                        .map((record, index) => {
+                          const time = new Date(record.timestamp);
+                          const isLate = time.getHours() >= 7 && time.getMinutes() > 0;
+                          return (
+                            <div
+                              key={record.id}
+                              className={`p-3 rounded-lg backdrop-blur-sm border ${
+                                isLate ? 'bg-red-500/10 border-red-500/20' : 'bg-green-500/10 border-green-500/20'
+                              }`}
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium">
+                                  {time.toLocaleTimeString()}
+                                </span>
+                                <span className={`text-sm ${
+                                  isLate ? 'text-red-500' : 'text-green-500'
+                                }`}>
+                                  {isLate ? 'Late' : 'On Time'}
+                                </span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {record.prefectNumber} ({record.role})
+                              </div>
+                            </div>
+                          );
+                        })
+                      }
+                      {filteredRecords.length === 0 && (
+                        <p className="text-muted-foreground text-sm text-center py-4">
+                          No attendance records for this date
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="search">
+              <PrefectSearch />
+            </TabsContent>
+
+            <TabsContent value="bulk">
+              <BulkAttendance />
+            </TabsContent>
+
+            <TabsContent value="analytics">
+              <AnalyticsSection records={allRecords} />
+            </TabsContent>
+
+            <TabsContent value="storage">
+              <StorageMonitor />
+            </TabsContent>
+
+            <TabsContent value="backup">
+              <BackupManager />
+            </TabsContent>
+
+            <TabsContent value="records">
               <Card className="backdrop-blur-sm bg-background/80 border border-white/10">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-white" />
-                    Today's Overview
+                    <FileText className="h-5 w-5 text-white" />
+                    Attendance Records
                   </CardTitle>
-                  <CardDescription>{date}</CardDescription>
+                  <CardDescription>All records for {date}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg backdrop-blur-sm">
-                      <span>Total Prefects</span>
-                      <span className="font-bold text-lg">{stats?.total || 0}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-green-500/10 rounded-lg backdrop-blur-sm border border-green-500/20">
-                      <span>On Time</span>
-                      <span className="font-bold text-lg text-green-500">{stats?.onTime || 0}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-red-500/10 rounded-lg backdrop-blur-sm border border-red-500/20">
-                      <span>Late</span>
-                      <span className="font-bold text-lg text-red-500">{stats?.late || 0}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="backdrop-blur-sm bg-background/80 border border-white/10">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart className="h-5 w-5 text-white" />
-                    Role Distribution
-                  </CardTitle>
-                  <CardDescription>Attendance by role</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {stats && Object.entries(stats.byRole)
-                      .filter(([_, count]) => count > 0)
-                      .map(([role, count]) => (
-                        <div key={role} className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg backdrop-blur-sm">
-                          <span>{role}</span>
-                          <span className="font-bold">{count}</span>
-                        </div>
-                      ))
-                    }
-                    {(!stats || Object.values(stats.byRole).every(count => count === 0)) && (
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                    {filteredRecords.map(record => (
+                      <div key={record.id} className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg backdrop-blur-sm border border-white/10">
+                        {editingRecord === record.id ? (
+                          <div className="w-full space-y-3">
+                            <div className="flex gap-3">
+                              <Input
+                                value={editForm.prefectNumber}
+                                onChange={(e) => setEditForm(prev => ({ ...prev, prefectNumber: e.target.value }))}
+                                placeholder="Prefect Number"
+                                className="bg-background/50 border-white/20 backdrop-blur-sm"
+                              />
+                              <Select
+                                value={editForm.role}
+                                onValueChange={(value) => setEditForm(prev => ({ ...prev, role: value as PrefectRole }))}
+                              >
+                                <SelectTrigger className="bg-background/50 border-white/20 backdrop-blur-sm">
+                                  <SelectValue placeholder="Role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {roles.map((role) => (
+                                    <SelectItem key={role} value={role}>
+                                      {role}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex gap-3">
+                              <Input
+                                type="date"
+                                value={editForm.date}
+                                onChange={(e) => setEditForm(prev => ({ ...prev, date: e.target.value }))}
+                                className="bg-background/50 border-white/20 backdrop-blur-sm"
+                              />
+                              <Input
+                                type="time"
+                                value={editForm.time}
+                                onChange={(e) => setEditForm(prev => ({ ...prev, time: e.target.value }))}
+                                className="bg-background/50 border-white/20 backdrop-blur-sm"
+                              />
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingRecord(null)}
+                                className="backdrop-blur-sm"
+                              >
+                                <X className="h-4 w-4 text-white" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => saveEdit(record.id)}
+                                className="backdrop-blur-sm"
+                              >
+                                <Save className="h-4 w-4 text-white" />
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{record.prefectNumber}</span>
+                              <span className="text-sm text-muted-foreground">{record.role}</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="text-right">
+                                <span className="text-sm">{new Date(record.timestamp).toLocaleTimeString()}</span>
+                                <span className={`block text-xs ${
+                                  new Date(record.timestamp).getHours() >= 7 && 
+                                  new Date(record.timestamp).getMinutes() > 0
+                                    ? 'text-red-500'
+                                    : 'text-green-500'
+                                }`}>
+                                  {new Date(record.timestamp).getHours() >= 7 && 
+                                   new Date(record.timestamp).getMinutes() > 0 ? 'Late' : 'On Time'}
+                                </span>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => startEditing(record)}
+                                className="backdrop-blur-sm"
+                              >
+                                <Edit2 className="h-4 w-4 text-white" />
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                    {filteredRecords.length === 0 && (
                       <p className="text-muted-foreground text-sm text-center py-4">
-                        No role distribution data available
+                        No records found
                       </p>
                     )}
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
 
+            <TabsContent value="history">
               <Card className="backdrop-blur-sm bg-background/80 border border-white/10">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Clock className="h-5 w-5 text-white" />
-                    Attendance Timeline
+                    Previous Records
                   </CardTitle>
-                  <CardDescription>Arrival pattern for {date}</CardDescription>
+                  <CardDescription>View and export past attendance data</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {filteredRecords
-                      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-                      .map((record, index) => {
-                        const time = new Date(record.timestamp);
-                        const isLate = time.getHours() >= 7 && time.getMinutes() > 0;
-                        return (
-                          <div
-                            key={record.id}
-                            className={`p-3 rounded-lg backdrop-blur-sm border ${
-                              isLate ? 'bg-red-500/10 border-red-500/20' : 'bg-green-500/10 border-green-500/20'
-                            }`}
-                          >
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium">
-                                {time.toLocaleTimeString()}
-                              </span>
-                              <span className={`text-sm ${
-                                isLate ? 'text-red-500' : 'text-green-500'
-                              }`}>
-                                {isLate ? 'Late' : 'On Time'}
-                              </span>
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {record.prefectNumber} ({record.role})
-                            </div>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {uniqueDates.map((recordDate) => {
+                      const dateStats = getDailyStats(recordDate);
+                      return (
+                        <div
+                          key={recordDate}
+                          className="p-4 rounded-lg border bg-card hover:bg-accent cursor-pointer transition-colors backdrop-blur-sm bg-background/50 border-white/10"
+                          onClick={() => setDate(recordDate)}
+                        >
+                          <p className="font-medium">{recordDate}</p>
+                          <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                            <p className="flex justify-between">
+                              <span>Total:</span>
+                              <span>{dateStats.total}</span>
+                            </p>
+                            <p className="flex justify-between">
+                              <span>On Time:</span>
+                              <span className="text-green-500">{dateStats.onTime}</span>
+                            </p>
+                            <p className="flex justify-between">
+                              <span>Late:</span>
+                              <span className="text-red-500">{dateStats.late}</span>
+                            </p>
                           </div>
-                        );
-                      })
-                    }
-                    {filteredRecords.length === 0 && (
-                      <p className="text-muted-foreground text-sm text-center py-4">
-                        No attendance records for this date
+                        </div>
+                      );
+                    })}
+                    {uniqueDates.length === 0 && (
+                      <p className="text-muted-foreground text-sm col-span-full text-center py-4">
+                        No previous records found
                       </p>
                     )}
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          </TabsContent>
+            </TabsContent>
+          </Tabs>
+        </div>
 
-          <TabsContent value="search">
-            <PrefectSearch />
-          </TabsContent>
-
-          <TabsContent value="bulk">
-            <BulkAttendance />
-          </TabsContent>
-
-          <TabsContent value="analytics">
-            <AnalyticsSection records={allRecords} />
-          </TabsContent>
-
-          <TabsContent value="backup">
-            <BackupManager />
-          </TabsContent>
-
-          <TabsContent value="records">
-            <Card className="backdrop-blur-sm bg-background/80 border border-white/10">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-white" />
-                  Attendance Records
-                </CardTitle>
-                <CardDescription>All records for {date}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                  {filteredRecords.map(record => (
-                    <div key={record.id} className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg backdrop-blur-sm border border-white/10">
-                      {editingRecord === record.id ? (
-                        <div className="w-full space-y-3">
-                          <div className="flex gap-3">
-                            <Input
-                              value={editForm.prefectNumber}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, prefectNumber: e.target.value }))}
-                              placeholder="Prefect Number"
-                              className="bg-background/50 border-white/20 backdrop-blur-sm"
-                            />
-                            <Select
-                              value={editForm.role}
-                              onValueChange={(value) => setEditForm(prev => ({ ...prev, role: value as PrefectRole }))}
-                            >
-                              <SelectTrigger className="bg-background/50 border-white/20 backdrop-blur-sm">
-                                <SelectValue placeholder="Role" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {roles.map((role) => (
-                                  <SelectItem key={role} value={role}>
-                                    {role}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="flex gap-3">
-                            <Input
-                              type="date"
-                              value={editForm.date}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, date: e.target.value }))}
-                              className="bg-background/50 border-white/20 backdrop-blur-sm"
-                            />
-                            <Input
-                              type="time"
-                              value={editForm.time}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, time: e.target.value }))}
-                              className="bg-background/50 border-white/20 backdrop-blur-sm"
-                            />
-                          </div>
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setEditingRecord(null)}
-                              className="backdrop-blur-sm"
-                            >
-                              <X className="h-4 w-4 text-white" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => saveEdit(record.id)}
-                              className="backdrop-blur-sm"
-                            >
-                              <Save className="h-4 w-4 text-white" />
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{record.prefectNumber}</span>
-                            <span className="text-sm text-muted-foreground">{record.role}</span>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              <span className="text-sm">{new Date(record.timestamp).toLocaleTimeString()}</span>
-                              <span className={`block text-xs ${
-                                new Date(record.timestamp).getHours() >= 7 && 
-                                new Date(record.timestamp).getMinutes() > 0
-                                  ? 'text-red-500'
-                                  : 'text-green-500'
-                              }`}>
-                                {new Date(record.timestamp).getHours() >= 7 && 
-                                 new Date(record.timestamp).getMinutes() > 0 ? 'Late' : 'On Time'}
-                              </span>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => startEditing(record)}
-                              className="backdrop-blur-sm"
-                            >
-                              <Edit2 className="h-4 w-4 text-white" />
-                            </Button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                  {filteredRecords.length === 0 && (
-                    <p className="text-muted-foreground text-sm text-center py-4">
-                      No records found
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="history">
-            <Card className="backdrop-blur-sm bg-background/80 border border-white/10">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-white" />
-                  Previous Records
-                </CardTitle>
-                <CardDescription>View and export past attendance data</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {uniqueDates.map((recordDate) => {
-                    const dateStats = getDailyStats(recordDate);
-                    return (
-                      <div
-                        key={recordDate}
-                        className="p-4 rounded-lg border bg-card hover:bg-accent cursor-pointer transition-colors backdrop-blur-sm bg-background/50 border-white/10"
-                        onClick={() => setDate(recordDate)}
-                      >
-                        <p className="font-medium">{recordDate}</p>
-                        <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                          <p className="flex justify-between">
-                            <span>Total:</span>
-                            <span>{dateStats.total}</span>
-                          </p>
-                          <p className="flex justify-between">
-                            <span>On Time:</span>
-                            <span className="text-green-500">{dateStats.onTime}</span>
-                          </p>
-                          <p className="flex justify-between">
-                            <span>Late:</span>
-                            <span className="text-red-500">{dateStats.late}</span>
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {uniqueDates.length === 0 && (
-                    <p className="text-muted-foreground text-sm col-span-full text-center py-4">
-                      No previous records found
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+          <AlertDialogContent className="backdrop-blur-xl bg-background/80 border border-white/10">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Clear All Data?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete all attendance records.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="backdrop-blur-sm">Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleClearData} className="bg-destructive text-destructive-foreground backdrop-blur-sm">
+                Clear Data
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-
-      <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
-        <AlertDialogContent className="backdrop-blur-xl bg-background/80 border border-white/10">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Clear All Data?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete all attendance records.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="backdrop-blur-sm">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleClearData} className="bg-destructive text-destructive-foreground backdrop-blur-sm">
-              Clear Data
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+      
+      {/* Real-time sync indicator */}
+      <RealTimeSync />
+    </>
   );
 }
