@@ -335,7 +335,6 @@ export class AttendanceStorageManager {
       );
     } catch (error) {
       console.error('Failed to get records:', error);
-      this.handleStorageError(error);
       return [];
     }
   }
@@ -697,7 +696,7 @@ class StorageManagerProxy {
         quota: { available: 0, used: 0, percentage: 0 },
         recordCount: 0,
         lastBackup: null,
-        version: STORAGE_VERSION,
+        version: '2.0.0',
         integrity: false,
       };
     }

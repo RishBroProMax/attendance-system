@@ -20,6 +20,8 @@ export function checkDuplicateAttendance(prefectNumber: string, role: PrefectRol
 }
 
 export function checkAdminAccess(pin: string): boolean {
+  if (typeof window === 'undefined') return false;
+  
   const now = Date.now();
   const storedLockoutTime = Number(localStorage.getItem(LOCKOUT_TIME_KEY) || '0');
   

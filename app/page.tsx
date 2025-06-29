@@ -150,6 +150,7 @@ export default function Home() {
         });
       }
 
+      // Clear form after successful submission
       setRole('');
       setPrefectNumber('');
     } catch (error) {
