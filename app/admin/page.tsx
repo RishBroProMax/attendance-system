@@ -37,13 +37,13 @@ import { StorageMonitor } from '@/components/ui/storage-monitor';
 import { RealTimeSync } from '@/components/ui/real-time-sync';
 import { toast } from 'sonner';
 import { AttendanceRecord, DailyStats, PrefectRole } from '@/lib/types';
-import { 
-  getAttendanceRecords, 
-  getDailyStats, 
-  exportAttendance, 
-  updateAttendance, 
+import {
+  getAttendanceRecords,
+  getDailyStats,
+  exportAttendance,
+  updateAttendance,
   checkAdminAccess,
-  addStorageListener
+  addStorageListener,
 } from '@/lib/attendance';
 import Link from 'next/link';
 import {
@@ -55,7 +55,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from '@/components/ui/alert-dialog';
 import {
   Dialog,
   DialogContent,
@@ -63,14 +63,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@/components/ui/tabs";
+} from '@/components/ui/tabs';
 
 import { AnalyticsSection } from '@/components/admin/analytics-section';
 import { PrefectSearch } from '@/components/admin/prefect-search';
@@ -85,7 +85,7 @@ const roles: PrefectRole[] = [
   'Senior',
   'Junior',
   'Sub',
-  'Apprentice'
+  'Apprentice',
 ];
 
 export default function AdminPanel() {
@@ -121,7 +121,7 @@ export default function AdminPanel() {
 
   const handlePinDigitChange = (index: number, value: string) => {
     if (value.length > 1) return;
-    
+
     const newPinDigits = [...pinDigits];
     newPinDigits[index] = value;
     setPinDigits(newPinDigits);
@@ -130,7 +130,7 @@ export default function AdminPanel() {
       setActiveDigit(index + 1);
       inputRefs.current[index + 1]?.focus();
     }
-    
+
     if (index === 4 && value) {
       handlePinSubmit(undefined, newPinDigits.join(''));
     }
@@ -155,7 +155,7 @@ export default function AdminPanel() {
 
     setIsAuthenticating(true);
     const finalPin = submittedPin || pinDigits.join('');
-    
+
     try {
       if (checkAdminAccess(finalPin)) {
         setIsAuthenticated(true);
@@ -164,6 +164,8 @@ export default function AdminPanel() {
           description: 'Welcome to the admin panel',
           icon: <ShieldAlert className="h-5 w-5 text-red-500" />,
         });
+      } else {
+        throw new Error('Invalid PIN');
       }
     } catch (error) {
       toast.error('Access Denied', {
@@ -185,12 +187,12 @@ export default function AdminPanel() {
     const loadData = () => {
       const records = getAttendanceRecords();
       setAllRecords(records);
-      const todayRecords = records.filter(r => r.date === date);
+      const todayRecords = records.filter((r) => r.date === date);
       setFilteredRecords(todayRecords);
       setStats(getDailyStats(date));
 
-      const dates = [...new Set(records.map(r => r.date))].sort((a, b) => 
-        new Date(b).getTime() - new Date(a).getTime()
+      const dates = [...new Set(records.map((r) => r.date))].sort(
+        (a, b) => new Date(b).getTime() - new Date(a).getTime()
       );
       setUniqueDates(dates);
     };
@@ -206,7 +208,7 @@ export default function AdminPanel() {
     const lastExport = localStorage.getItem('last_export_date');
     if (lastExport !== date) {
       toast('Daily Export Reminder', {
-        description: 'Please remember to export today\'s attendance records before end of day.',
+        description: "Please remember to export today's attendance records before end of day.",
         icon: <AlertTriangle className="h-5 w-5 text-yellow-500" />,
         duration: 5000,
       });
@@ -218,7 +220,7 @@ export default function AdminPanel() {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const filtered = allRecords.filter(record => {
+    const filtered = allRecords.filter((record) => {
       const matchesSearch = record.prefectNumber.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesDate = record.date === date;
       const matchesRole = roleFilter === 'all' || record.role === roleFilter;
@@ -263,8 +265,8 @@ export default function AdminPanel() {
                   {pinDigits.map((digit, index) => (
                     <Input
                       key={index}
-                      ref={el => inputRefs.current[index] = el}
-                      type={showPin ? "text" : "password"}
+                      ref={(el) => (inputRefs.current[index] = el)}
+                      type={showPin ? 'text' : 'password'}
                       value={digit}
                       onChange={(e) => handlePinDigitChange(index, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(index, e)}
@@ -326,7 +328,7 @@ export default function AdminPanel() {
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-    
+
     localStorage.setItem('last_export_date', date);
     toast.success('Export Successful', {
       description: 'Attendance records have been exported to CSV format.',
@@ -399,7 +401,7 @@ export default function AdminPanel() {
         throw new Error('All fields are required');
       }
 
-      const updatedRecord = updateAttendance(id, {
+      updateAttendance(id, {
         prefectNumber: editForm.prefectNumber,
         role: editForm.role as PrefectRole,
         timestamp: timestamp.toISOString(),
@@ -407,7 +409,7 @@ export default function AdminPanel() {
       });
 
       setEditingRecord(null);
-      
+
       toast.success('Record Updated', {
         description: 'The attendance record has been updated successfully.',
       });
@@ -477,8 +479,8 @@ export default function AdminPanel() {
               <Button onClick={handleExport} className="gap-2 w-full sm:w-auto bg-primary/90 hover:bg-primary backdrop-blur-sm">
                 <Download className="h-4 w-4 text-white" /> Export Records
               </Button>
-              <Button 
-                variant="destructive" 
+              <Button
+                variant="destructive"
                 onClick={() => setShowClearDialog(true)}
                 className="gap-2 w-full sm:w-auto backdrop-blur-sm"
               >
@@ -561,16 +563,16 @@ export default function AdminPanel() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {stats && Object.entries(stats.byRole)
-                        .filter(([_, count]) => count > 0)
-                        .map(([role, count]) => (
-                          <div key={role} className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg backdrop-blur-sm">
-                            <span>{role}</span>
-                            <span className="font-bold">{count}</span>
-                          </div>
-                        ))
-                      }
-                      {(!stats || Object.values(stats.byRole).every(count => count === 0)) && (
+                      {stats &&
+                        Object.entries(stats.byRole)
+                          .filter(([_, count]) => count > 0)
+                          .map(([role, count]) => (
+                            <div key={role} className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg backdrop-blur-sm">
+                              <span>{role}</span>
+                              <span className="font-bold">{count}</span>
+                            </div>
+                          ))}
+                      {(!stats || Object.values(stats.byRole).every((count) => count === 0)) && (
                         <p className="text-muted-foreground text-sm text-center py-4">
                           No role distribution data available
                         </p>
@@ -591,7 +593,7 @@ export default function AdminPanel() {
                     <div className="space-y-3">
                       {filteredRecords
                         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-                        .map((record, index) => {
+                        .map((record) => {
                           const time = new Date(record.timestamp);
                           const isLate = time.getHours() >= 7 && time.getMinutes() > 0;
                           return (
@@ -602,12 +604,10 @@ export default function AdminPanel() {
                               }`}
                             >
                               <div className="flex justify-between items-center">
-                                <span className="text-sm font-medium">
-                                  {time.toLocaleTimeString()}
-                                </span>
-                                <span className={`text-sm ${
-                                  isLate ? 'text-red-500' : 'text-green-500'
-                                }`}>
+                                <span className="text-sm font-medium">{time.toLocaleTimeString()}</span>
+                                <span
+                                  className={`text-sm ${isLate ? 'text-red-500' : 'text-green-500'}`}
+                                >
                                   {isLate ? 'Late' : 'On Time'}
                                 </span>
                               </div>
@@ -616,8 +616,7 @@ export default function AdminPanel() {
                               </div>
                             </div>
                           );
-                        })
-                      }
+                        })}
                       {filteredRecords.length === 0 && (
                         <p className="text-muted-foreground text-sm text-center py-4">
                           No attendance records for this date
@@ -660,20 +659,24 @@ export default function AdminPanel() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                    {filteredRecords.map(record => (
+                    {filteredRecords.map((record) => (
                       <div key={record.id} className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg backdrop-blur-sm border border-white/10">
                         {editingRecord === record.id ? (
                           <div className="w-full space-y-3">
                             <div className="flex gap-3">
                               <Input
                                 value={editForm.prefectNumber}
-                                onChange={(e) => setEditForm(prev => ({ ...prev, prefectNumber: e.target.value }))}
+                                onChange={(e) =>
+                                  setEditForm((prev) => ({ ...prev, prefectNumber: e.target.value }))
+                                }
                                 placeholder="Prefect Number"
                                 className="bg-background/50 border-white/20 backdrop-blur-sm"
                               />
                               <Select
                                 value={editForm.role}
-                                onValueChange={(value) => setEditForm(prev => ({ ...prev, role: value as PrefectRole }))}
+                                onValueChange={(value) =>
+                                  setEditForm((prev) => ({ ...prev, role: value as PrefectRole }))
+                                }
                               >
                                 <SelectTrigger className="bg-background/50 border-white/20 backdrop-blur-sm">
                                   <SelectValue placeholder="Role" />
@@ -691,13 +694,17 @@ export default function AdminPanel() {
                               <Input
                                 type="date"
                                 value={editForm.date}
-                                onChange={(e) => setEditForm(prev => ({ ...prev, date: e.target.value }))}
+                                onChange={(e) =>
+                                  setEditForm((prev) => ({ ...prev, date: e.target.value }))
+                                }
                                 className="bg-background/50 border-white/20 backdrop-blur-sm"
                               />
                               <Input
                                 type="time"
                                 value={editForm.time}
-                                onChange={(e) => setEditForm(prev => ({ ...prev, time: e.target.value }))}
+                                onChange={(e) =>
+                                  setEditForm((prev) => ({ ...prev, time: e.target.value }))
+                                }
                                 className="bg-background/50 border-white/20 backdrop-blur-sm"
                               />
                             </div>
@@ -728,14 +735,18 @@ export default function AdminPanel() {
                             <div className="flex items-center gap-4">
                               <div className="text-right">
                                 <span className="text-sm">{new Date(record.timestamp).toLocaleTimeString()}</span>
-                                <span className={`block text-xs ${
-                                  new Date(record.timestamp).getHours() >= 7 && 
+                                <span
+                                  className={`block text-xs ${
+                                    new Date(record.timestamp).getHours() >= 7 &&
+                                    new Date(record.timestamp).getMinutes() > 0
+                                      ? 'text-red-500'
+                                      : 'text-green-500'
+                                  }`}
+                                >
+                                  {new Date(record.timestamp).getHours() >= 7 &&
                                   new Date(record.timestamp).getMinutes() > 0
-                                    ? 'text-red-500'
-                                    : 'text-green-500'
-                                }`}>
-                                  {new Date(record.timestamp).getHours() >= 7 && 
-                                   new Date(record.timestamp).getMinutes() > 0 ? 'Late' : 'On Time'}
+                                    ? 'Late'
+                                    : 'On Time'}
                                 </span>
                               </div>
                               <Button
@@ -820,14 +831,16 @@ export default function AdminPanel() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel className="backdrop-blur-sm">Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleClearData} className="bg-destructive text-destructive-foreground backdrop-blur-sm">
+              <AlertDialogAction
+                onClick={handleClearData}
+                className="bg-destructive text-destructive-foreground backdrop-blur-sm"
+              >
                 Clear Data
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       </div>
-      
       {/* Real-time sync indicator */}
       <RealTimeSync />
     </>
