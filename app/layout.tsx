@@ -6,6 +6,7 @@ import { Navbar } from '@/components/ui/navbar';
 import { Footer } from '@/components/ui/footer';
 import { ParticlesBackground } from '@/components/ui/particles';
 import { FloatingClock } from '@/components/ui/floating-clock';
+import { UpdateChecker } from '@/components/ui/update-checker';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -51,9 +52,10 @@ export default function RootLayout({
             <Navbar />
             <ParticlesBackground />
             <main className="flex-1 container mx-auto">{children}</main>
-            
+
             <Footer />
             <FloatingClock />
+            <UpdateChecker />
           </div>
         </Providers>
       </body>

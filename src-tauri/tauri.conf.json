@@ -7,8 +7,8 @@
         "withGlobalTauri": true
     },
     "package": {
-        "productName": "attendance-system",
-        "version": "0.1.0"
+        "productName": "Attendance System",
+        "version": "1.0.0"
     },
     "tauri": {
         "allowlist": {
@@ -16,6 +16,12 @@
             "shell": {
                 "all": false,
                 "open": true
+            },
+            "dialog": {
+                "all": true
+            },
+            "notification": {
+                "all": true
             }
         },
         "bundle": {
@@ -54,6 +60,14 @@
                     ],
                     "displayLanguageSelector": false
                 }
+            },
+            "updater": {
+                "active": true,
+                "endpoints": [
+                    "https://github.com/YOUR_USERNAME/attendance-system/releases/latest/download/latest.json"
+                ],
+                "dialog": false,
+                "pubkey": "REPLACE_WITH_YOUR_PUBLIC_KEY_FROM_TAURI_SIGNER_GENERATE"
             }
         },
         "security": {

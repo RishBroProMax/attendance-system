@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0",
+  "notes": "Initial release of Attendance System with auto-update support",
+  "pub_date": "2025-11-26T10:00:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUldUTE1QQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=",
+      "url": "https://github.com/RishBroProMax/attendance-system/releases/download/v1.0.0/attendance-system_1.0.0_x64-setup.nsis.zip"
+    }
+  }
+}
