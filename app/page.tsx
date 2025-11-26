@@ -105,7 +105,8 @@ export default function Home() {
 
     try {
       const today = new Date().toLocaleDateString();
-      if (checkDuplicateAttendance(prefectNumber, role, today)) {
+      // Await the async check
+      if (await checkDuplicateAttendance(prefectNumber, role, today)) {
         toast.error('Duplicate Entry', {
           icon: <AlertTriangle className="w-6 h-6 text-red-500" />,
           description: `A prefect with number ${prefectNumber} has already registered for role ${role} today.`,
@@ -114,7 +115,8 @@ export default function Home() {
         return;
       }
 
-      const record = saveAttendance(prefectNumber, role);
+      // Await the async save
+      const record = await saveAttendance(prefectNumber, role);
       const time = new Date(record.timestamp);
       const isLate = time.getHours() > 7 || (time.getHours() === 7 && time.getMinutes() > 0);
 
@@ -273,7 +275,7 @@ export default function Home() {
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Real-time sync indicator */}
       <RealTimeSync />
     </>
