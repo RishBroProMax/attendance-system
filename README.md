@@ -1,129 +1,155 @@
-# 🎓 MRCM - Prefect Board Attendance System v2
+# Attendance System v2
 
-An advanced web-based attendance management system built for the **Mahinda Rajapaksha College Prefect Board**. This system allows prefects to manage attendance efficiently using **QR Code Scanning**, with data stored securely in **local storage**, and includes a powerful **Admin Dashboard** with real-time analytics.
+Modern, offline-capable attendance tracking system built with Next.js and Tauri.
 
-## 🌐 Live App
+## Features
 
-🔗 [Try it here](https://sys.imrishmika.site)
+- ✨ **Attendance Tracking**: Mark attendance via manual entry or QR code scanning
+- 📊 **Analytics Dashboard**: View statistics, charts, and prefect search
+- 💾 **Offline-First**: SQLite database with full offline support
+- 🔄 **Auto-Updates**: Seamless updates via GitHub Releases
+- 🎨 **Modern UI**: Beautiful, responsive design with dark mode
+- 🔐 **Secure**: Admin panel with PIN protection
+- 📦 **Backup/Restore**: Export and import data with `.bbak` files
 
----
+## Quick Start
 
-## 🚀 Features
+### Prerequisites
 
-- 📲 **QR Code Scanning** for instant attendance marking
-- 🧠 **Smart Local Storage** system – no need for a backend
-- 📊 **Admin Dashboard** with real-time attendance analytics
-- 👤 Role-based system: Prefects and Admin
-- 💡 Minimal, fast, and user-friendly interface
-- 📱 Fully responsive on desktop, tablet, and mobile
-- ✅ Get full attendance report of the specific user
+- Node.js 18+
+- Rust (latest stable)
+- Windows OS (currently Windows-only build)
 
----
+### Installation
 
-## 🛠️ Built With
+1 **Install from Release:**
+   - Download the latest installer from [Releases](https://github.com/YOUR_USERNAME/attendance-system/releases)
+   - Run the `.exe` or `.msi` installer
+   - Launch "Attendance System"
 
-- **Frontend**: Next.js, React, Tailwind CSS
-- **State Management**: Local Storage (no external database)
-- **Authentication**: Simple local-based login
-- **QR Scanning**: JavaScript-based QR scanner
-- **Deployment**: Vercel
+2. **Build from Source:**
+   ```bash
+   # Clone repository
+   git clone https://github.com/YOUR_USERNAME/attendance-system.git
+   cd attendance-system-v2
 
----
+   # Install dependencies
+   npm install
 
+   # Run development server
+   npm run tauri dev
 
-## ⚙️ Getting Started (For Developers)
+   # Build production app
+   npm run tauri build
+   ```
 
-1. **Clone the repo**:
+## Usage
+
+### Marking Attendance
+
+1. **Manual Entry:**
+   - Enter prefect number
+   - Select role
+   - Click "Mark Attendance"
+
+2. **QR Code:**
+   - Navigate to QR Scanner
+   - Scan prefect QR code
+   - Attendance marked automatically
+
+### Admin Panel
+
+**Default PIN:** `apple`
+
+- View all attendance records
+- Export data to CSV
+- Search by prefect number
+- View analytics and charts
+- Bulk attendance entry
+- Backup/restore data
+- System monitoring
+
+## Auto-Updates
+
+The app automatically checks for updates:
+- On startup (after 3 seconds)
+- Updates download in background
+- One-click install and restart
+- No manual downloads needed
+
+## Development
 
 ```bash
-git clone https://github.com/RishBroProMax/attendance-system-v2.git
-cd attendance-system-v2
-````
+# Install dependencies
+npm install
 
-2. **Install dependencies**:
-
-```bash
-npm install --force
-```
-
-3. **Start development server**:
-
-```bash
+# Run Next.js development server
 npm run dev
+
+# Run Tauri development app
+npm run tauri dev
+
+# Type checking
+npx tsc --noEmit
+
+# Build for production
+npm run tauri build
 ```
 
-4. Open `http://localhost:3000` in your browser 🚀
+## Project Structure
+
+```
+├── app/                  # Next.js pages
+├── components/           # React components
+├── lib/                  # Utilities and business logic
+├── src-tauri/            # Rust backend
+│   ├── src/              # Rust source code
+│   ├── tauri.conf.json   # Tauri configuration
+│   └── Cargo.toml        # Rust dependencies
+└── .github/workflows/    # CI/CD automation
+```
+
+## Tech Stack
+
+- **Frontend**: Next.js 13, React, TypeScript, TailwindCSS
+- **Desktop**: Tauri v1
+- **Database**: SQLite (via rusqlite)
+- **Charts**: Chart.js, Recharts
+- **UI Components**: Radix UI, shadcn/ui
+- **CI/CD**: GitHub Actions
+
+## Documentation
+
+- **[Auto-Update Guide](./AUTO_UPDATE_GUIDE.md)**: Complete setup for auto-updates
+- **[Walkthrough](./path/to/walkthrough.md)**: Implementation details
+- **[API Documentation](./API.md)**: Backend commands reference
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Open a Pull Request
+
+## License
+
+MIT License - see LICENSE file for details
+
+## Support
+
+For issues or questions:
+- Open an issue on GitHub
+- Check the [Troubleshooting Guide](./AUTO_UPDATE_GUIDE.md#-troubleshooting)
+
+## Roadmap
+
+- [ ] Multi-platform support (macOS, Linux)
+- [ ] Cloud sync (optional)
+- [ ] Advanced analytics
+- [ ] Export to PDF
+- [ ] Custom themes
 
 ---
 
-## 📊 Admin Dashboard
-
-* View total attendance stats
-* Analyze attendance per day, week, or month
-* Export local data if needed (manual backup option)
-* Secure admin login with dashboard access
-* Export to CSV file
-
----
-
-## 🔐 Authentication
-
-* Prefects login locally using credentials
-* Admin has a separate login for full access
-* Auth data saved in browser storage
-
----
-
-## 📸 QR Attendance ( Beta V0.9 )
-
-* Each student gets a unique QR code
-* Admin or Prefect can scan the code using a webcam/mobile camera
-* System auto-marks attendance in local records
-
----
-
-## 💡 Why Local Storage?
-
-* ⚡ Super fast and lightweight
-* 📴 Works offline once loaded
-* 🔒 Data stays on device (no cloud required)
-* 📤 Easy to export manually if backup needed
-* 🧩 Easy Database Handel 
-
----
-
-## 🧩 Future Improvements
-
-* ✅ Sync with cloud backend (Firebase/Supabase)
-* ✅ Face recognition module (AI-based)
-* ✅ Enhanced security/auth layer
-* ✅ Google Sheet Connectable
-* ✅ Moderators Roles ( Developer, Admin, Attendance Marker )
-
----
-
-## 🏫 Made For
-
-> **Mahinda Rajapaksha College - Prefect Board** <br>
-> Developed with ❤️ by [@RishBroProMax](https://github.com/RishBroProMax)
-
----
-
-## 💼 Hire Me
-
-I specialize in building full-stack, high-performance web applications tailored for schools, startups, and custom use cases.
-
-📬 Reach out:
-
-* Email: `contact@imrishmika.site`
-* Portfolio: [imrishmika.site](https://imrishmika.site)
-* GitHub: [@RishBroProMax](https://github.com/RishBroProMax)
-
-Let’s build something great together!
-
-## 📄 License
-
-MIT License. Feel free to use, improve, or fork this project.
-
----
-
+**Built with ❤️ using Tauri and Next.js**
