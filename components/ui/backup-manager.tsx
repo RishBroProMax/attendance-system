@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Download, 
-  Upload, 
-  Shield, 
-  Clock, 
-  Wifi, 
-  WifiOff, 
+import {
+  Download,
+  Upload,
+  Shield,
+  Clock,
+  Wifi,
+  WifiOff,
   Database,
   RefreshCw,
   AlertTriangle,
@@ -59,12 +59,15 @@ export function BackupManager() {
       });
     }
 
-    const records = getAttendanceRecords();
-    const size = new Blob([JSON.stringify(records)]).size;
-    setBackupStatus(prev => ({
-      ...prev,
-      backupSize: formatBytes(size)
-    }));
+    const loadInitialData = async () => {
+      const records = await getAttendanceRecords();
+      const size = new Blob([JSON.stringify(records)]).size;
+      setBackupStatus(prev => ({
+        ...prev,
+        backupSize: formatBytes(size)
+      }));
+    };
+    loadInitialData();
 
     const savedHistory = localStorage.getItem('backup_history');
     if (savedHistory) {
@@ -124,7 +127,7 @@ export function BackupManager() {
   const exportBackup = useCallback(async (isAuto = false) => {
     setIsExporting(true);
     try {
-      const records = getAttendanceRecords();
+      const records = await getAttendanceRecords();
       const backupData = {
         version: backupStatus.version,
         timestamp: new Date().toISOString(),
@@ -239,7 +242,7 @@ export function BackupManager() {
     setBackupStatus(newStatus);
     localStorage.setItem('backup_status', JSON.stringify(newStatus));
     toast.success(newStatus.autoBackupEnabled ? 'Auto-backup enabled' : 'Auto-backup disabled', {
-      description: newStatus.autoBackupEnabled 
+      description: newStatus.autoBackupEnabled
         ? 'Data will be automatically backed up every 10 seconds (demo mode)'
         : 'Automatic backups have been disabled'
     });
@@ -272,7 +275,7 @@ export function BackupManager() {
               <span className="text-sm font-medium">Last Backup</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              {backupStatus.lastBackup 
+              {backupStatus.lastBackup
                 ? backupStatus.lastBackup.toLocaleString()
                 : 'Never'
               }

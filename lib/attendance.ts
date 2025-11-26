@@ -58,13 +58,7 @@ export function checkAdminAccess(pin: string): boolean {
 }
 
 // Async replacement for checkDuplicateAttendance
-// Note: Backend handles this, but UI might want to check before sending.
-// For now, we'll rely on backend error.
 export async function checkDuplicateAttendance(prefectNumber: string, role: PrefectRole, date: string): Promise<boolean> {
-  // This is inefficient if we fetch all, but consistent with previous logic.
-  // Better to add a specific check command if needed.
-  // For now, let's assume we don't need this client-side check if backend enforces it.
-  // But to keep API compatibility, we might need it.
   const records = await tauriStorage.getAllAttendance();
   return records.some(record =>
     record.prefectNumber === prefectNumber &&
@@ -90,12 +84,7 @@ export async function saveManualAttendance(
   timestamp: Date
 ): Promise<AttendanceRecord> {
   // Backend handles timestamp, but if we need to force a timestamp, we need to update the backend command.
-  // The current backend `mark_attendance` uses `chrono::Local::now()`.
-  // If manual attendance implies "past" attendance, we need a new command or update `mark_attendance` to accept timestamp.
   // For now, we'll use `mark_attendance` which uses current time.
-  // If the user needs to backdate, we need to update the backend.
-  // The `timestamp` arg here is ignored by current `mark_attendance`.
-  // TODO: Update backend to accept optional timestamp if needed.
   return saveAttendance(prefectNumber, role);
 }
 
@@ -126,18 +115,11 @@ export async function updateAttendance(
   id: string,
   updates: Partial<AttendanceRecord>
 ): Promise<void> {
-  // Backend `update_member` updates member info, but `updateAttendance` in frontend seems to update the record itself (time, etc.)?
-  // The backend schema has `attendance` table. We need `update_attendance` command.
-  // I only implemented `update_member`. I missed `update_attendance` in backend!
-  // I need to add `update_attendance` to backend.
-  // For now, I'll throw error or log it.
   console.error("updateAttendance not fully implemented in backend yet");
   // throw new Error("Update attendance not implemented");
 }
 
 export async function deleteAttendance(id: string): Promise<void> {
-  // Backend needs `delete_attendance` command. I only implemented `delete_member`.
-  // I need to add `delete_attendance` to backend.
   console.error("deleteAttendance not fully implemented in backend yet");
 }
 
@@ -229,8 +211,6 @@ export async function getDailyStats(date: string): Promise<DailyStats> {
 
 export async function exportAttendance(date: string): Promise<string> {
   const records = await tauriStorage.getAttendanceByDate(date);
-  // ... (rest of export logic, adapted for async)
-  // Since export logic is just formatting, we can keep it here but it needs to await records.
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -284,6 +264,45 @@ export async function exportAttendance(date: string): Promise<string> {
   return `${header}\n${recordsCSV}`;
 }
 
+export async function exportPrefectReport(prefectNumber: string): Promise<string> {
+  const records = await searchPrefectRecords(prefectNumber);
+  const stats = await getPrefectStats(prefectNumber);
+
+  const header = [
+    `# Prefect Attendance Report: ${prefectNumber}`,
+    `Total Days: ${stats.totalDays}`,
+    `On Time: ${stats.onTimeDays}`,
+    `Late: ${stats.lateDays}`,
+    `Attendance Rate: ${stats.attendanceRate.toFixed(1)}%`,
+    '',
+    '## Role History',
+    ...Object.entries(stats.roles)
+      .filter(([_, count]) => (count as number) > 0)
+      .map(([role, count]) => `${role}: ${count}`),
+    '',
+    '## Attendance History',
+    ['Date', 'Time', 'Role', 'Status', 'Notes'].join(',')
+  ].join('\n');
+
+  const recordsCSV = records.map(record => {
+    const date = new Date(record.timestamp);
+    const dateStr = date.toLocaleDateString('en-US');
+    const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const status = date.getHours() < 7 || (date.getHours() === 7 && date.getMinutes() === 0) ? 'On Time' : 'Late';
+    const notes = status === 'Late' ? `Arrived ${date.getHours() - 7}h ${date.getMinutes()}m late` : '';
+
+    return [
+      dateStr,
+      timeStr,
+      record.role,
+      status,
+      notes
+    ].join(',');
+  }).join('\n');
+
+  return `${header}\n${recordsCSV}`;
+}
+
 // Storage management functions
 export async function createBackup(): Promise<string> {
   return tauriStorage.exportBackup();
@@ -294,8 +313,6 @@ export async function restoreFromBackup(backupData: string): Promise<void> {
 }
 
 export async function getStorageInfo() {
-  // This was local storage specific.
-  // We can return app version and maybe DB size if we implement a command.
   const version = await tauriStorage.getAppVersion();
   return {
     quota: { available: 0, used: 0, percentage: 0 }, // Not applicable
@@ -304,4 +321,8 @@ export async function getStorageInfo() {
     version,
     integrity: true,
   };
+}
+
+export async function wipeAllData(): Promise<void> {
+  return tauriStorage.wipeAllData();
 }

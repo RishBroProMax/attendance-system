@@ -142,16 +142,16 @@ export function PrefectSearch() {
     return stats;
   };
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!prefectNumber.trim() || !selectedRole) {
       toast.error('Please enter both the prefect ID and select a role for the search.');
       return;
     }
     setIsSearching(true);
     try {
-      const allRecords = searchPrefectRecords(prefectNumber.trim());
+      const allRecords = await searchPrefectRecords(prefectNumber.trim());
       const filteredRecords = allRecords.filter(
-        (record) => record.role.toLowerCase() === selectedRole.toLowerCase()
+        (record: AttendanceRecord) => record.role.toLowerCase() === selectedRole.toLowerCase()
       );
       setSearchResults(filteredRecords);
 
@@ -176,13 +176,13 @@ export function PrefectSearch() {
     }
   };
 
-  const handleExportReport = () => {
+  const handleExportReport = async () => {
     if (!prefectNumber.trim() || !selectedRole || !searchResults.length) {
       toast.error('No data to export');
       return;
     }
     try {
-      const csv = exportPrefectReport(prefectNumber.trim());
+      const csv = await exportPrefectReport(prefectNumber.trim());
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

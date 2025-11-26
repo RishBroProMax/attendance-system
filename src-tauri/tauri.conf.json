@@ -28,7 +28,33 @@
                 "icons/128x128@2x.png",
                 "icons/icon.icns",
                 "icons/icon.ico"
-            ]
+            ],
+            "resources": [
+                "LICENSE"
+            ],
+            "fileAssociations": [
+                {
+                    "ext": [
+                        "bbak"
+                    ],
+                    "name": "Attendance Backup",
+                    "description": "Attendance System Backup File",
+                    "role": "Editor"
+                }
+            ],
+            "windows": {
+                "wix": {
+                    "language": "en-US"
+                },
+                "nsis": {
+                    "template": "installer.nsi",
+                    "installMode": "perMachine",
+                    "languages": [
+                        "English"
+                    ],
+                    "displayLanguageSelector": false
+                }
+            }
         },
         "security": {
             "csp": null

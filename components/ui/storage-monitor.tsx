@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Database, 
-  AlertTriangle, 
-  CheckCircle, 
-  Download, 
-  Upload, 
+import {
+  Database,
+  AlertTriangle,
+  CheckCircle,
+  Download,
+  Upload,
   RefreshCw,
   HardDrive,
   Shield,
@@ -39,7 +39,7 @@ export function StorageMonitor() {
   const refreshStorageInfo = async () => {
     setIsRefreshing(true);
     try {
-      const info = getStorageInfo();
+      const info = await getStorageInfo();
       setStorageInfo(info);
     } catch (error) {
       console.error('Failed to get storage info:', error);
@@ -69,7 +69,7 @@ export function StorageMonitor() {
   const handleBackup = async () => {
     setIsBackingUp(true);
     try {
-      const backupData = createBackup();
+      const backupData = await createBackup();
       const blob = new Blob([backupData], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -83,7 +83,7 @@ export function StorageMonitor() {
       toast.success('Backup Created', {
         description: 'Attendance data has been backed up successfully',
       });
-      
+
       refreshStorageInfo();
     } catch (error) {
       console.error('Backup failed:', error);
@@ -103,11 +103,11 @@ export function StorageMonitor() {
     try {
       const text = await file.text();
       restoreFromBackup(text);
-      
+
       toast.success('Restore Complete', {
         description: 'Attendance data has been restored successfully',
       });
-      
+
       refreshStorageInfo();
     } catch (error) {
       console.error('Restore failed:', error);
@@ -196,8 +196,8 @@ export function StorageMonitor() {
               {storageInfo.quota.percentage.toFixed(1)}%
             </span>
           </div>
-          <Progress 
-            value={storageInfo.quota.percentage} 
+          <Progress
+            value={storageInfo.quota.percentage}
             className="h-2"
           />
           <div className="flex justify-between text-xs text-muted-foreground">
@@ -215,14 +215,14 @@ export function StorageMonitor() {
             </div>
             <p className="text-lg font-bold">{storageInfo.recordCount.toLocaleString()}</p>
           </div>
-          
+
           <div className="p-3 rounded-lg bg-background/30 backdrop-blur-sm border border-white/10">
             <div className="flex items-center gap-2 mb-1">
               <Clock className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">Last Backup</span>
             </div>
             <p className="text-sm">
-              {storageInfo.lastBackup 
+              {storageInfo.lastBackup
                 ? new Date(storageInfo.lastBackup).toLocaleDateString()
                 : 'Never'
               }
@@ -292,7 +292,7 @@ export function StorageMonitor() {
                 <div>
                   <h4 className="font-medium text-red-500 mb-1">Storage Almost Full</h4>
                   <p className="text-sm text-muted-foreground">
-                    Your storage is {storageInfo.quota.percentage.toFixed(1)}% full. 
+                    Your storage is {storageInfo.quota.percentage.toFixed(1)}% full.
                     Consider creating a backup and clearing old records.
                   </p>
                 </div>

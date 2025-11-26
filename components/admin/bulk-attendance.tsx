@@ -24,7 +24,7 @@ function WarningModal({ open, onClose }: { open: boolean; onClose: () => void })
             Warning: Testing Option
           </h2>
           <p className="text-sm text-center text-red-500">
-            This is a <b>testing</b> feature. My developer <b>does NOT recommend</b> using it. 
+            This is a <b>testing</b> feature. My developer <b>does NOT recommend</b> using it.
             If you use this, <span className="font-semibold">your attendance data may get corrupted</span> at any time.<br /><br />
             <b>Proceed with extreme caution!</b>
           </p>
@@ -76,7 +76,7 @@ export function BulkAttendance() {
   };
 
   const updateEntry = (id: string, field: 'prefectNumber' | 'role', value: string) => {
-    setEntries(entries.map(entry => 
+    setEntries(entries.map(entry =>
       entry.id === id ? { ...entry, [field]: value } : entry
     ));
   };
@@ -87,7 +87,7 @@ export function BulkAttendance() {
   };
 
   const processBulkAttendance = async () => {
-    const validEntries = entries.filter(entry => 
+    const validEntries = entries.filter(entry =>
       entry.prefectNumber.trim() && entry.role
     );
 
@@ -105,7 +105,7 @@ export function BulkAttendance() {
         role: entry.role as PrefectRole
       }));
 
-      const result = saveBulkAttendance(attendanceData);
+      const result = await saveBulkAttendance(attendanceData);
       setResults(result);
 
       if (result.success.length > 0) {
@@ -272,8 +272,8 @@ export function BulkAttendance() {
             ))}
           </div>
 
-          <Button 
-            onClick={processBulkAttendance} 
+          <Button
+            onClick={processBulkAttendance}
             disabled={isProcessing}
             className="w-full bg-primary/90 hover:bg-primary backdrop-blur-sm"
           >
