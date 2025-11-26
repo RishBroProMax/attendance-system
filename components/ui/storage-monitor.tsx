@@ -17,7 +17,6 @@ import {
 import { Button } from './button';
 import { Card, CardContent, CardHeader, CardTitle } from './card';
 import { Badge } from './badge';
-import { Progress } from './progress';
 import { toast } from 'sonner';
 import { getStorageInfo, createBackup, restoreFromBackup, addStorageListener } from '@/lib/attendance';
 
@@ -52,12 +51,10 @@ export function StorageMonitor() {
   useEffect(() => {
     refreshStorageInfo();
 
-    // Set up storage listener for real-time updates
     const unsubscribe = addStorageListener(() => {
       refreshStorageInfo();
     });
 
-    // Refresh every 30 seconds
     const interval = setInterval(refreshStorageInfo, 30000);
 
     return () => {
@@ -126,12 +123,6 @@ export function StorageMonitor() {
     return 'text-red-500';
   };
 
-  const getQuotaVariant = (percentage: number) => {
-    if (percentage < 50) return 'default';
-    if (percentage < 80) return 'secondary';
-    return 'destructive';
-  };
-
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -185,7 +176,6 @@ export function StorageMonitor() {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Storage Quota */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -196,17 +186,18 @@ export function StorageMonitor() {
               {storageInfo.quota.percentage.toFixed(1)}%
             </span>
           </div>
-          <Progress
-            value={storageInfo.quota.percentage}
-            className="h-2"
-          />
+          <div className="w-full bg-secondary rounded-full h-2">
+            <div
+              className="bg-primary h-2 rounded-full transition-all"
+              style={{ width: `${storageInfo.quota.percentage}%` }}
+            />
+          </div>
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>{formatBytes(storageInfo.quota.used)} used</span>
             <span>{formatBytes(storageInfo.quota.available)} available</span>
           </div>
         </div>
 
-        {/* Quick Stats */}
         <div className="grid grid-cols-2 gap-4">
           <div className="p-3 rounded-lg bg-background/30 backdrop-blur-sm border border-white/10">
             <div className="flex items-center gap-2 mb-1">
@@ -230,7 +221,6 @@ export function StorageMonitor() {
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex flex-wrap gap-2">
           <Button
             onClick={handleBackup}
@@ -278,7 +268,6 @@ export function StorageMonitor() {
           </Button>
         </div>
 
-        {/* Storage Warnings */}
         <AnimatePresence>
           {storageInfo.quota.percentage > 90 && (
             <motion.div
@@ -322,7 +311,6 @@ export function StorageMonitor() {
           )}
         </AnimatePresence>
 
-        {/* Detailed Information */}
         <AnimatePresence>
           {showDetails && (
             <motion.div
