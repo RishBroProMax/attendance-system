@@ -23,15 +23,6 @@
             "LICENSE": "./LICENSE"
         },
         "windows": {
-            "fileAssociations": [
-                {
-                    "ext": [
-                        "bbak"
-                    ],
-                    "name": "Attendance Backup",
-                    "description": "Attendance System Backup File"
-                }
-            ],
             "nsis": {
                 "template": "./installer.nsi",
                 "installMode": "perMachine",
@@ -50,7 +41,8 @@
                 "width": 1200,
                 "height": 800,
                 "resizable": true,
-                "fullscreen": false
+                "fullscreen": false,
+                "fileDropEnabled": false
             }
         ],
         "security": {
@@ -61,7 +53,7 @@
         "updater": {
             "active": true,
             "endpoints": [
-                "https://github.com/RishBroProMax/attendance-system/releases/latest/download/latest.json"
+                "https://github.com/YOUR_USERNAME/attendance-system/releases/latest/download/latest.json"
             ],
             "dialog": false,
             "pubkey": "REPLACE_WITH_YOUR_PUBLIC_KEY_FROM_TAURI_SIGNER_GENERATE"
