@@ -21,6 +21,7 @@ jobs:
         platform: [windows-latest]
 
     runs-on: ${{ matrix.platform }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -42,7 +43,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # ⚡ Build Tauri app & create GitHub release
       - name: Build Tauri app (Tauri v2)
+        id: tauri_build
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -53,22 +56,20 @@ jobs:
           releaseName: 'Attendance System v__VERSION__'
           releaseBody: |
             ## What's New in v__VERSION__
-            
-            ### Features
-            - Attendance tracking system
-            - QR code scanning
-            - Admin dashboard
-            - Backup and restore
+
+            - Improved performance
+            - Offline attendance storage
             - Auto-update support
-            
-            ### Installation
-            Download the installer below for your platform:
-            - **Windows**: Download the `.exe` or `.msi` installer
-            
-            ### Update
-            If you have a previous version installed, the app will automatically notify you of this update.
-            
-            See the full changelog for details.
+            - Admin dashboard improvements
+
+          includeUpdaterJson: true
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
+
+      # ⚡ Upload the generated build files as artifacts (so you can download manually)
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: |
+            src-tauri/target/release/bundle/**/*
