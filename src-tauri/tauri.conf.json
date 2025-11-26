@@ -24,15 +24,11 @@
         ],
         "windows": {
             "nsis": {
-                "template": "./installer.nsi",
-                "installerOptions": {
-                    "allowToChangeInstallationDirectory": true,
-                    "installMode": "perUser",
-                    "languages": [
-                        "English"
-                    ],
-                    "displayLanguageSelector": false
-                }
+                "installMode": "perUser",
+                "languages": [
+                    "English"
+                ],
+                "displayLanguageSelector": false
             }
         },
         "externalBin": []
