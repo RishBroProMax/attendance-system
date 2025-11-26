@@ -56,7 +56,7 @@
                 "https://github.com/RishBroProMax/attendance-system/releases/latest/download/latest.json"
             ],
             "dialog": true,
-            "pubkey": "YOUR_PUBLIC_KEY_HERE"
+            "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY3M0M1OUE4QTlDQTk1MkEKUldRcWxjcXBxRms4WjZDVE1iY3J1akY1SFZPZDNKdlU5Wi9tMXdsUU1ZTXpsUnpEd1lIZlpZYlYK"
         }
     }
 }
