@@ -19,13 +19,14 @@
             "icons/icon.icns",
             "icons/icon.ico"
         ],
-        "resources": {
-            "LICENSE": "./LICENSE"
-        },
+        "resources": [
+            "./LICENSE"
+        ],
         "windows": {
             "nsis": {
                 "template": "./installer.nsi",
-                "installMode": "perMachine",
+                "installMode": "perUser",
+                "allowToChangeInstallationDirectory": true,
                 "languages": [
                     "English"
                 ],
@@ -53,10 +54,10 @@
         "updater": {
             "active": true,
             "endpoints": [
-                "https://github.com/YOUR_USERNAME/attendance-system/releases/latest/download/latest.json"
+                "https://github.com/RishBroProMax/attendance-system/releases/latest/download/latest.json"
             ],
-            "dialog": false,
-            "pubkey": "REPLACE_WITH_YOUR_PUBLIC_KEY_FROM_TAURI_SIGNER_GENERATE"
+            "dialog": true,
+            "pubkey": "YOUR_PUBLIC_KEY_HERE"
         }
     }
 }
