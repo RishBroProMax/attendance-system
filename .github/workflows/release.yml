@@ -42,18 +42,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Next.js
-        run: npm run build
-
-      - name: Install Tauri CLI
-        run: npm install -g @tauri-apps/cli@latest
-
-      - name: Build Tauri app
+      - name: Build Tauri app (Tauri v2)
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__
           releaseName: 'Attendance System v__VERSION__'
@@ -69,7 +63,7 @@ jobs:
             
             ### Installation
             Download the installer below for your platform:
-            - **Windows**: `attendance-system_VERSION_x64-setup.nsis.zip` or `.msi`
+            - **Windows**: Download the `.exe` or `.msi` installer
             
             ### Update
             If you have a previous version installed, the app will automatically notify you of this update.
@@ -78,42 +72,3 @@ jobs:
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
-
-  create-updater-json:
-    needs: release
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
-      - name: Get version
-        id: version
-        run: |
-          VERSION=$(cat package.json | grep version | head -1 | awk -F: '{ print $2 }' | sed 's/[",]//g' | tr -d ' ')
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-      
-      - name: Create latest.json  
-        run: |
-          cat > latest.json << EOF
-          {
-            "version": "${{ steps.version.outputs.VERSION }}",
-            "notes": "See release notes for details",
-            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "platforms": {
-              "windows-x86_64": {
-                "signature": "",
-                "url": "https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.VERSION }}/attendance-system_${{ steps.version.outputs.VERSION }}_x64-setup.nsis.zip"
-              }
-            }
-          }
-          EOF
-      
-      - name: Upload latest.json to release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/v')
-        with:
-          files: latest.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

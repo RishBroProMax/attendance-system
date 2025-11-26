@@ -1,28 +1,39 @@
-mod db;
-mod commands;
+// Prevents additional console window on Windows in release, DO NOT REMOVE!!
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use chrono::Timelike; // Needed for hour()/minute() in commands
+mod commands;
+mod db;
+
+use commands::*;
 
 fn main() {
-  tauri::Builder::default()
-    .setup(|app| {
-        db::init_db(app.handle()).expect("Failed to initialize database");
-        Ok(())
-    })
-    .invoke_handler(tauri::generate_handler![
-        commands::mark_attendance,
-        commands::get_attendance_by_date,
-        commands::get_all_attendance,
-        commands::get_member_list,
-        commands::create_member,
-        commands::update_member,
-        commands::delete_member,
-        commands::export_backup,
-        commands::import_backup,
-        commands::wipe_all_data,
-        commands::get_app_version,
-        commands::check_for_updates
-    ])
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    // Initialize database
+    if let Err(e) = db::init_db() {
+        eprintln!("Failed to initialize database: {}", e);
+        std::process::exit(1);
+    }
+
+    tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .invoke_handler(tauri::generate_handler![
+            mark_attendance,
+            get_attendance_by_date,
+            get_member_list,
+            create_member,
+            update_member,
+            delete_member,
+            export_backup,
+            import_backup,
+            wipe_all_data,
+            get_app_version,
+            check_for_updates,
+            get_all_attendance
+        ])
+        .setup(|_app| {
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }

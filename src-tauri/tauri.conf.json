@@ -1,86 +1,70 @@
 {
+    "$schema": "https://schema.tauri.app/config/2",
+    "identifier": "com.attendance.system",
+    "productName": "Attendance System",
+    "version": "1.0.0",
     "build": {
         "beforeDevCommand": "npm run dev",
+        "devUrl": "http://localhost:3000",
         "beforeBuildCommand": "npm run build",
-        "devPath": "http://localhost:3000",
-        "distDir": "../out",
-        "withGlobalTauri": true
+        "frontendDist": "../out"
     },
-    "package": {
-        "productName": "Attendance System",
-        "version": "1.0.0"
-    },
-    "tauri": {
-        "allowlist": {
-            "all": false,
-            "shell": {
-                "all": false,
-                "open": true
-            },
-            "dialog": {
-                "all": true
-            },
-            "notification": {
-                "all": true
-            }
+    "bundle": {
+        "active": true,
+        "targets": "all",
+        "icon": [
+            "icons/32x32.png",
+            "icons/128x128.png",
+            "icons/128x128@2x.png",
+            "icons/icon.icns",
+            "icons/icon.ico"
+        ],
+        "resources": {
+            "LICENSE": "./LICENSE"
         },
-        "bundle": {
-            "active": true,
-            "targets": "all",
-            "identifier": "com.attendance.system",
-            "icon": [
-                "icons/32x32.png",
-                "icons/128x128.png",
-                "icons/128x128@2x.png",
-                "icons/icon.icns",
-                "icons/icon.ico"
-            ],
-            "resources": [
-                "LICENSE"
-            ],
+        "windows": {
             "fileAssociations": [
                 {
                     "ext": [
                         "bbak"
                     ],
                     "name": "Attendance Backup",
-                    "description": "Attendance System Backup File",
-                    "role": "Editor"
+                    "description": "Attendance System Backup File"
                 }
             ],
-            "windows": {
-                "wix": {
-                    "language": "en-US"
-                },
-                "nsis": {
-                    "template": "installer.nsi",
-                    "installMode": "perMachine",
-                    "languages": [
-                        "English"
-                    ],
-                    "displayLanguageSelector": false
-                }
-            },
-            "updater": {
-                "active": true,
-                "endpoints": [
-                    "https://github.com/YOUR_USERNAME/attendance-system/releases/latest/download/latest.json"
+            "nsis": {
+                "template": "./installer.nsi",
+                "installMode": "perMachine",
+                "languages": [
+                    "English"
                 ],
-                "dialog": false,
-                "pubkey": "REPLACE_WITH_YOUR_PUBLIC_KEY_FROM_TAURI_SIGNER_GENERATE"
+                "displayLanguageSelector": false
             }
         },
-        "security": {
-            "csp": null
-        },
+        "externalBin": []
+    },
+    "app": {
         "windows": [
             {
-                "fullscreen": false,
-                "resizable": true,
                 "title": "Attendance System",
                 "width": 1200,
-                "height": 800
+                "height": 800,
+                "resizable": true,
+                "fullscreen": false
             }
-        ]
+        ],
+        "security": {
+            "csp": null
+        }
+    },
+    "plugins": {
+        "updater": {
+            "active": true,
+            "endpoints": [
+                "https://github.com/RishBroProMax/attendance-system/releases/latest/download/latest.json"
+            ],
+            "dialog": false,
+            "pubkey": "REPLACE_WITH_YOUR_PUBLIC_KEY_FROM_TAURI_SIGNER_GENERATE"
+        }
     }
 }
